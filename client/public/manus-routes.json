@@ -1,0 +1,7 @@
+{
+  "routes": [
+    { "path": "/", "title": "Início" },
+    { "path": "/dashboard", "title": "Dashboard" },
+    { "path": "/404", "title": "Página não encontrada" }
+  ]
+}
