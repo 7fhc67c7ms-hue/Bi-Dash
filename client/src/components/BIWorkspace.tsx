@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import {
   BarChart3,
+  Bot,
   Calculator,
   ChartNoAxesCombined,
   Download,
@@ -48,6 +49,7 @@ const NAV_ITEMS = [
   ["historico", "Histórico", History],
   ["relatorios", "Relatórios", FileText],
   ["exportacao", "Exportação", Download],
+  ["assistente", "Assistente do BI", Bot],
 ] as const;
 
 const MONTHS = [

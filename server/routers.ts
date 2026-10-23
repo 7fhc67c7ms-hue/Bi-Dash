@@ -9,6 +9,7 @@ import { TRPCError } from "@trpc/server";
 import { filterProductionData } from "./filters";
 import { z } from "zod";
 import * as db from "./db";
+import { invokeLLM, type Message as LLMMessage } from "./_core/llm";
 import { analisarEstoque } from "./stock";
 import { analisarProducaoCliente } from "./clientAnalysis";
 import {
@@ -93,6 +94,44 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+  }),
+
+  assistant: router({
+    chat: protectedProcedure
+      .input(z.object({
+        messages: z.array(z.object({
+          role: z.enum(["user", "assistant"]),
+          content: z.string().trim().min(1).max(6000),
+        })).min(1).max(12),
+        context: z.string().trim().max(16000).default(""),
+      }))
+      .mutation(async ({ input }) => {
+        const messages: LLMMessage[] = [
+          {
+            role: "system",
+            content: [
+              "Você é o Assistente do BI Produção — Fotoporcelana.",
+              "Responda em português do Brasil, de forma objetiva e útil para uma decisão operacional.",
+              "Use exclusivamente o contexto analítico enviado pelo sistema e a pergunta do usuário.",
+              "Nunca invente preço, custo, margem, datas diárias, capacidade, prazo ou qualquer campo que não esteja no contexto.",
+              "Quando o dado não existir, diga claramente que ele não está disponível na base atual e explique qual campo seria necessário.",
+              "Diferencie quantidade produzida de valor financeiro.",
+              "Ao citar números, preserve o recorte e os filtros informados.",
+              `CONTEXTO ATUAL DO BI:\n${input.context || "Nenhum contexto foi fornecido."}`,
+            ].join("\n\n"),
+          },
+          ...input.messages.map(message => ({
+            role: message.role,
+            content: message.content,
+          })),
+        ];
+        const response = await invokeLLM({ messages });
+        const content = response.choices[0]?.message.content;
+        if (typeof content !== "string" || !content.trim()) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "O assistente não retornou uma resposta válida." });
+        }
+        return { content };
+      }),
   }),
 
   production: router({

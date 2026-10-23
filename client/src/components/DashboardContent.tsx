@@ -35,6 +35,7 @@ import { describeClientFilter } from "@/lib/clientFilterLabel";
 import BIWorkspace from "./BIWorkspace";
 import StockManagement from "./StockManagement";
 import ClientProductionAnalysis from "./ClientProductionAnalysis";
+import ProductionAssistant from "./ProductionAssistant";
 
 interface DashboardContentProps {
   user: User | null;
@@ -580,6 +581,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
               onReportOptionsChange={setReportOptions}
               analysisMode={analysisMode}
             />
+            <ProductionAssistant data={{ ...analyticsData, totalRegistros: analyticsData.totalRegistros, clientes: analyticsData.clientes, tiposPlaca: analyticsData.tiposPlaca }} filterDescription={filterDescription} />
             <MarketInsights />
             {showRecords && (
               <div id="dados" className="scroll-mt-6">

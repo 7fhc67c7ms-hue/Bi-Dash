@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { BarChart3, Database, Download, FileText, GitCompareArrows, History, LayoutDashboard, Layers3, LineChart, ListOrdered, LogOut, PanelLeft, Sigma, TableProperties, UsersRound } from "lucide-react";
+import { BarChart3, Bot, Database, Download, FileText, GitCompareArrows, History, LayoutDashboard, Layers3, LineChart, ListOrdered, LogOut, PanelLeft, Sigma, TableProperties, UsersRound } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -42,6 +42,7 @@ const menuItems = [
   { icon: Download, label: "Exportação", path: "/dashboard#exportacao", targetId: "exportacao" },
   { icon: Database, label: "Gestão de dados", path: "/dashboard#dados", targetId: "dados" },
   { icon: TableProperties, label: "Importações", path: "/dashboard#importacoes", targetId: "importacoes" },
+  { icon: Bot, label: "Assistente do BI", path: "/dashboard#assistente", targetId: "assistente" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

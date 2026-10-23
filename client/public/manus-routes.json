@@ -2,6 +2,7 @@
   "routes": [
     { "path": "/", "title": "Início" },
     { "path": "/dashboard", "title": "Dashboard" },
-    { "path": "/404", "title": "Página não encontrada" }
+    { "path": "/404", "title": "Página não encontrada" },
+    { "path": "/dashboard#assistente", "title": "Assistente do BI" }
   ]
 }
