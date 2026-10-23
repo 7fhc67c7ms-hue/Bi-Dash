@@ -196,3 +196,12 @@ A especificação principal está atendida no escopo atual, mas estas evoluçõe
 - política formal de retenção e eliminação dos PDFs.
 
 Essas pendências não foram mascaradas como implementadas, porque dependem de autorização, decisões de negócio ou campos que ainda não existem no schema.
+
+
+## Atualização multiplataforma — online-first
+
+A aplicação mantém uma única fonte oficial no backend remoto. O PC continua importando os PDFs, mas a extração e a persistência ocorrem no servidor, permitindo que o iPhone consulte produção e estoque com o PC desligado. O aplicativo Windows passou a usar a mesma autenticação do site, sem enviar o cabeçalho de usuário compartilhado fixo.
+
+O estoque agora possui edição protegida por `version`, rejeição de alterações baseadas em versão antiga e auditoria transacional de criação, atualização e remoção. A tabela `stock_movement_audit` guarda snapshots sem alterar os movimentos históricos existentes. A interface exibe o rastro de alterações e sinaliza perda de conexão; uma ação só é considerada concluída após confirmação do backend.
+
+O frontend agora inclui manifesto PWA, ícones para iPhone e service worker online-first. O service worker não intercepta endpoints `/api/` e não cria uma fila offline de alterações, evitando divergência local. O iPhone pode ser instalado na Tela de Início, mas alterações de estoque exigem conexão e confirmação do servidor.

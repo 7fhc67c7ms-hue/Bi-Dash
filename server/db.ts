@@ -8,6 +8,7 @@ import {
   productionData,
   productionUploads,
   stockMovements,
+  stockMovementAudit,
   InsertStockMovement,
   users,
 } from "../drizzle/schema";
@@ -226,16 +227,115 @@ export async function getStockMovementsByUser(userId: number) {
     .orderBy(desc(stockMovements.ocorridoEm), desc(stockMovements.id));
 }
 
+export async function getStockMovementById(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(stockMovements)
+    .where(and(eq(stockMovements.id, id), eq(stockMovements.userId, userId)))
+    .limit(1);
+  return result[0];
+}
+
+export async function getStockMovementAuditByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(stockMovementAudit)
+    .where(eq(stockMovementAudit.userId, userId))
+    .orderBy(desc(stockMovementAudit.registradoEm), desc(stockMovementAudit.id));
+}
+
+export class StockMovementConflictError extends Error {
+  constructor(message = "O movimento de estoque foi alterado ou removido por outro dispositivo. Recarregue os dados e tente novamente.") {
+    super(message);
+    this.name = "StockMovementConflictError";
+  }
+}
+
 export async function insertStockMovement(data: InsertStockMovement) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(stockMovements).values(data);
-  return Number((result as any)[0]?.insertId ?? 0);
+  return db.transaction(async tx => {
+    const result = await tx.insert(stockMovements).values(data);
+    const id = Number((result as any)[0]?.insertId ?? 0);
+    await tx.insert(stockMovementAudit).values({
+      movementId: id,
+      userId: data.userId,
+      acao: "create",
+      tipoPlaca: data.tipoPlaca,
+      movimento: data.movimento,
+      quantidade: data.quantidade,
+      observacao: data.observacao ?? null,
+      ocorridoEm: data.ocorridoEm ?? new Date(),
+    });
+    return id;
+  });
 }
 
-export async function deleteStockMovement(id: number, userId: number) {
+export async function updateStockMovement(
+  id: number,
+  userId: number,
+  expectedVersion: number,
+  data: Omit<InsertStockMovement, "userId">,
+) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.delete(stockMovements)
-    .where(and(eq(stockMovements.id, id), eq(stockMovements.userId, userId)));
+  return db.transaction(async tx => {
+    const currentResult = await tx.select().from(stockMovements)
+      .where(and(eq(stockMovements.id, id), eq(stockMovements.userId, userId)))
+      .limit(1);
+    const current = currentResult[0];
+    if (!current || current.version !== expectedVersion) {
+      throw new StockMovementConflictError();
+    }
+
+    await tx.update(stockMovements)
+      .set({ ...data, version: sql`${stockMovements.version} + 1` })
+      .where(and(
+        eq(stockMovements.id, id),
+        eq(stockMovements.userId, userId),
+        eq(stockMovements.version, expectedVersion),
+      ));
+
+    await tx.insert(stockMovementAudit).values({
+      movementId: id,
+      userId,
+      acao: "update",
+      tipoPlaca: data.tipoPlaca,
+      movimento: data.movimento,
+      quantidade: data.quantidade,
+      observacao: data.observacao ?? null,
+      ocorridoEm: data.ocorridoEm ?? current.ocorridoEm,
+    });
+  });
+}
+
+export async function deleteStockMovement(id: number, userId: number, expectedVersion: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.transaction(async tx => {
+    const currentResult = await tx.select().from(stockMovements)
+      .where(and(eq(stockMovements.id, id), eq(stockMovements.userId, userId)))
+      .limit(1);
+    const current = currentResult[0];
+    if (!current || current.version !== expectedVersion) {
+      throw new StockMovementConflictError();
+    }
+
+    await tx.insert(stockMovementAudit).values({
+      movementId: current.id,
+      userId,
+      acao: "delete",
+      tipoPlaca: current.tipoPlaca,
+      movimento: current.movimento,
+      quantidade: current.quantidade,
+      observacao: current.observacao,
+      ocorridoEm: current.ocorridoEm,
+    });
+    await tx.delete(stockMovements)
+      .where(and(
+        eq(stockMovements.id, id),
+        eq(stockMovements.userId, userId),
+        eq(stockMovements.version, expectedVersion),
+      ));
+  });
 }

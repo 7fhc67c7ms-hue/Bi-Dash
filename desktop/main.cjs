@@ -12,11 +12,10 @@ function readDashboardUrl() {
   } catch (error) {
     console.warn('[Desktop] Could not read dashboard-config.json:', error.message);
   }
-  return 'https://bidashapp-qswyoliw.manus.space';
+  return 'https://bidashweb-wamckvfr.manus.space';
 }
 
 const DASHBOARD_URL = readDashboardUrl();
-const DESKTOP_CLIENT_KEY = 'bi-producao-desktop-2026-v1';
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -78,18 +77,6 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  session.defaultSession.webRequest.onBeforeSendHeaders(
-    { urls: [`${DASHBOARD_URL}/*`] },
-    (details, callback) => {
-      details.requestHeaders['X-BI-Desktop-Key'] = DESKTOP_CLIENT_KEY;
-      callback({ requestHeaders: details.requestHeaders });
-    },
-  );
-
-  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
-    callback(permission === 'notifications');
-  });
-
   session.defaultSession.clearCache().finally(createWindow);
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

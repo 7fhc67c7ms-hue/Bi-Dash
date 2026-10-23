@@ -11,11 +11,11 @@ O instalador mantém o mesmo identificador do aplicativo e pode ser instalado po
 
 ## Uso
 
-O aplicativo abre o dashboard publicado em uma janela própria, como um programa Windows. Faça login normalmente e utilize a importação de PDFs, os indicadores, os filtros, os registros e as exportações.
+O aplicativo abre o dashboard publicado em uma janela própria, como um programa Windows. Faça login normalmente e utilize a importação de PDFs, os indicadores, os filtros, os registros, o estoque e as exportações. As alterações confirmadas no estoque ficam disponíveis no iPhone e em outros computadores porque o backend online é a fonte oficial dos dados.
 
 ## Requisitos
 
-O computador precisa estar conectado à internet. O aplicativo desktop mantém as funções online do sistema: autenticação, banco de dados, processamento inteligente dos PDFs e atualizações do dashboard.
+O computador precisa estar conectado à internet. O aplicativo desktop mantém as funções online do sistema: autenticação, banco de dados, processamento inteligente dos PDFs e atualizações do dashboard. Se a conexão cair antes da confirmação, a operação não é considerada salva; aguarde a reconexão e confira o histórico antes de repetir.
 
 ## Versão portátil
 

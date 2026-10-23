@@ -73,6 +73,7 @@ export const stockMovements = mysqlTable("stock_movements", {
   quantidade: int("quantidade").notNull(),
   observacao: text("observacao"),
   ocorridoEm: timestamp("ocorridoEm").defaultNow().notNull(),
+  version: int("version").default(1).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -80,3 +81,20 @@ export const stockMovements = mysqlTable("stock_movements", {
 export type StockMovement = typeof stockMovements.$inferSelect;
 export type InsertStockMovement = typeof stockMovements.$inferInsert;
 export type StockMovementKind = "entrada" | "saida" | "descarte" | "devolucao";
+
+/** Snapshot imutável de cada alteração feita no estoque. */
+export const stockMovementAudit = mysqlTable("stock_movement_audit", {
+  id: int("id").autoincrement().primaryKey(),
+  movementId: int("movementId").notNull(),
+  userId: int("userId").notNull().references(() => users.id),
+  acao: mysqlEnum("acao", ["create", "update", "delete"]).notNull(),
+  tipoPlaca: varchar("tipoPlaca", { length: 255 }).notNull(),
+  movimento: mysqlEnum("movimento", ["entrada", "saida", "descarte", "devolucao"]).notNull(),
+  quantidade: int("quantidade").notNull(),
+  observacao: text("observacao"),
+  ocorridoEm: timestamp("ocorridoEm").notNull(),
+  registradoEm: timestamp("registradoEm").defaultNow().notNull(),
+});
+
+export type StockMovementAudit = typeof stockMovementAudit.$inferSelect;
+export type InsertStockMovementAudit = typeof stockMovementAudit.$inferInsert;

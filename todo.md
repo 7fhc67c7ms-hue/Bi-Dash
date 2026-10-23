@@ -125,3 +125,13 @@
 - [x] Permitir imprimir a página atual com `Ctrl+P`, ocultando controles e navegação durante a impressão; manter uma opção visível de impressão para quem preferir clicar.
 - [x] Disponibilizar modo claro com fundo predominantemente branco, preservando as cores dos botões e dos gráficos.
 - [x] Validar a alteração com typecheck, testes e build de produção.
+
+
+## Atualização multiplataforma aprovada — online-first
+- [x] Corrigir as URLs do aplicativo Windows para a publicação atual sem alterar o banco ou os dados.
+- [x] Adicionar manifest, ícones e service worker mínimos para instalação do BI na Tela de Início do iPhone, mantendo o backend como fonte oficial.
+- [x] Adicionar controle de concorrência para alterações e exclusões de estoque, rejeitando uma operação baseada em versão antiga e solicitando recarga.
+- [x] Criar auditoria de estoque para registrar criação, edição e exclusão com usuário, data e snapshot do movimento, preservando o histórico já existente.
+- [x] Adicionar edição segura de movimentos de estoque no frontend mobile e desktop, com confirmação e recarga após conflito.
+- [x] Melhorar mensagens de estado offline/erro de conexão sem gravar alterações localmente sem confirmação do backend.
+- [x] Validar typecheck, testes, build, manifesto, PWA, permissões, persistência e sincronização sem apagar dados de produção.

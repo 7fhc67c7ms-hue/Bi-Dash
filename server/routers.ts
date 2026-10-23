@@ -282,6 +282,10 @@ export const appRouter = router({
       db.getStockMovementsByUser(ctx.user.id)
     ),
 
+    listStockAudit: protectedProcedure.query(({ ctx }) =>
+      db.getStockMovementAuditByUser(ctx.user.id)
+    ),
+
     createStockMovement: protectedProcedure
       .input(stockMovementInput)
       .mutation(async ({ ctx, input }) => {
@@ -296,11 +300,45 @@ export const appRouter = router({
         return { success: true, id };
       }),
 
-    deleteStockMovement: protectedProcedure
-      .input(z.object({ id: z.number().int().positive() }))
+    updateStockMovement: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        version: z.number().int().positive(),
+        data: stockMovementInput,
+      }))
       .mutation(async ({ ctx, input }) => {
-        await db.deleteStockMovement(input.id, ctx.user.id);
-        return { success: true };
+        try {
+          await db.updateStockMovement(input.id, ctx.user.id, input.version, {
+            tipoPlaca: input.data.tipoPlaca,
+            movimento: input.data.movimento,
+            quantidade: input.data.quantidade,
+            observacao: input.data.observacao ?? null,
+            ocorridoEm: input.data.ocorridoEm ? new Date(input.data.ocorridoEm) : new Date(),
+          });
+          return { success: true };
+        } catch (error) {
+          if (error instanceof db.StockMovementConflictError) {
+            throw new TRPCError({ code: "CONFLICT", message: error.message });
+          }
+          throw error;
+        }
+      }),
+
+    deleteStockMovement: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        version: z.number().int().positive(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          await db.deleteStockMovement(input.id, ctx.user.id, input.version);
+          return { success: true };
+        } catch (error) {
+          if (error instanceof db.StockMovementConflictError) {
+            throw new TRPCError({ code: "CONFLICT", message: error.message });
+          }
+          throw error;
+        }
       }),
 
     uploadPDF: protectedProcedure

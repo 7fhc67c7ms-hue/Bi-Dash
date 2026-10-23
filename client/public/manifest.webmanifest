@@ -1,0 +1,24 @@
+{
+  "name": "BI Produção — Fotoporcelana",
+  "short_name": "BI Produção",
+  "description": "Controle de produção, estoque e análises da Fotoporcelana.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0b1220",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/bi-logo-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/bi-logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

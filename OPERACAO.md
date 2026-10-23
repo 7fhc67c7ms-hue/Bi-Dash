@@ -30,7 +30,13 @@ Os KPIs exibem produção total, pedidos, média por pedido e produto estrela. A
 
 Use **Exportar CSV** para baixar os registros filtrados e abrir no Excel. Use **Relatório operacional** para baixar uma página HTML resumida com período, KPIs, produção por cliente e notas de concentração. O relatório pode ser impresso pelo navegador ou convertido em PDF localmente quando necessário.
 
-## 8. Consultar mercado
+## 8. Usar o estoque no iPhone e no Windows
+
+Abra o mesmo endereço do BI no computador ou no iPhone. No iPhone, use o menu de compartilhamento do Safari e escolha **Adicionar à Tela de Início** para instalar o PWA. O backend online é a fonte oficial: uma entrada, saída, devolução, descarte ou edição somente aparece como concluída depois da confirmação do servidor.
+
+No histórico do estoque, use o lápis para editar um movimento e a lixeira para removê-lo. Se outro dispositivo tiver alterado o mesmo movimento antes da sua confirmação, o sistema rejeita a operação, atualiza a tela e pede que você tente novamente com os dados mais recentes. A seção **Rastro de alterações** registra criações, edições e remoções com data e snapshot do movimento.
+
+## 9. Consultar mercado
 
 A secção **Inteligência de mercado** resume sinais observados em fornecedores públicos: variedade de formatos, memorial digital, programas de revenda, atendimento por WhatsApp, envio nacional e pressão de marketplaces. As fontes e limitações estão detalhadas em `market_analysis.md`.
 
