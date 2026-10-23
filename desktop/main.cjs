@@ -2,20 +2,28 @@ const { app, BrowserWindow, shell, session, ipcMain, dialog } = require('electro
 const fs = require('node:fs');
 const path = require('node:path');
 
-function readDashboardUrl() {
+function readDesktopConfig() {
   const configPath = path.join(__dirname, 'dashboard-config.json');
   try {
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     if (typeof config.dashboardUrl === 'string' && /^https:\/\//.test(config.dashboardUrl)) {
-      return config.dashboardUrl.replace(/\/$/, '');
+      return {
+        dashboardUrl: config.dashboardUrl.replace(/\/$/, ''),
+        oauthPortalUrl: typeof config.oauthPortalUrl === 'string' && /^https:\/\//.test(config.oauthPortalUrl)
+          ? config.oauthPortalUrl.replace(/\/$/, '')
+          : 'https://manus.im',
+      };
     }
   } catch (error) {
     console.warn('[Desktop] Could not read dashboard-config.json:', error.message);
   }
-  return 'https://bidashweb-wamckvfr.manus.space';
+  return {
+    dashboardUrl: 'https://bidashweb-wamckvfr.manus.space',
+    oauthPortalUrl: 'https://manus.im',
+  };
 }
 
-const DASHBOARD_URL = readDashboardUrl();
+const { dashboardUrl: DASHBOARD_URL, oauthPortalUrl: OAUTH_PORTAL_URL } = readDesktopConfig();
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -37,8 +45,17 @@ function createWindow() {
 
   win.once('ready-to-show', () => win.show());
 
+  // OAuth may redirect through the provider's domain before returning to the
+  // dashboard. Keep that complete flow in this BrowserWindow so its session
+  // cookie is stored by Electron rather than by the user's external browser.
+  let authInProgress = false;
+  const isDashboardUrl = url => url.startsWith(DASHBOARD_URL);
+  const isOAuthPortalUrl = url => url.startsWith(OAUTH_PORTAL_URL);
+  const canStayInAuthFlow = url => authInProgress && /^https:\/\//.test(url);
+
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith(DASHBOARD_URL)) {
+    if (isDashboardUrl(url) || isOAuthPortalUrl(url) || canStayInAuthFlow(url)) {
+      if (isOAuthPortalUrl(url)) authInProgress = true;
       return { action: 'allow' };
     }
     shell.openExternal(url);
@@ -67,10 +84,32 @@ function createWindow() {
   });
 
   win.webContents.on('will-navigate', (event, url) => {
-    if (!url.startsWith(DASHBOARD_URL)) {
+    if (isDashboardUrl(url)) {
+      authInProgress = false;
+      return;
+    }
+    if (isOAuthPortalUrl(url)) {
+      authInProgress = true;
+      return;
+    }
+    if (canStayInAuthFlow(url)) return;
+    if (!isDashboardUrl(url)) {
       event.preventDefault();
       shell.openExternal(url);
     }
+  });
+
+  win.webContents.on('will-redirect', (event, url) => {
+    if (isDashboardUrl(url)) {
+      authInProgress = false;
+      return;
+    }
+    if (isOAuthPortalUrl(url) || canStayInAuthFlow(url)) {
+      authInProgress = true;
+      return;
+    }
+    event.preventDefault();
+    shell.openExternal(url);
   });
 
   win.loadURL(`${DASHBOARD_URL}?desktopVersion=${encodeURIComponent(app.getVersion())}`);
