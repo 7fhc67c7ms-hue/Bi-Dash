@@ -12,6 +12,7 @@ import * as db from "./db";
 import { invokeLLM, type Message as LLMMessage } from "./_core/llm";
 import { analisarEstoque } from "./stock";
 import { analisarCustos } from "./costs";
+import { lookupCustomerLocation, summarizeCustomerLocations } from "./customerLocations";
 import { analisarProducaoCliente } from "./clientAnalysis";
 import {
   agruparPorMes,
@@ -94,6 +95,17 @@ const supplyConsumptionInput = z.object({
   placasProduzidas: z.number().int().nonnegative().optional().nullable(),
   referenciaEm: z.string().datetime().optional(),
   observacao: z.string().trim().max(1000).optional().nullable(),
+});
+const customerLocationInput = z.object({
+  nome: z.string().trim().min(1).max(255),
+  cep: z.string().trim().max(9).optional().nullable(),
+  cidade: z.string().trim().max(255).optional().nullable(),
+  uf: z.string().trim().max(2).optional().nullable(),
+});
+const locationLookupInput = z.object({
+  cep: z.string().trim().max(9).optional().nullable(),
+  cidade: z.string().trim().max(255).optional().nullable(),
+  uf: z.string().trim().max(2).optional().nullable(),
 });
 
 function decodePdf(fileBase64: string) {
@@ -233,6 +245,41 @@ export const appRouter = router({
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
         await db.deleteSupplyConsumption(input.id, ctx.user.id);
+        return { success: true };
+      }),
+  }),
+
+  customers: router({
+    getOverview: protectedProcedure.query(async ({ ctx }) => {
+      const locations = await db.getCustomerLocationsByUser(ctx.user.id);
+      return { locations, summary: summarizeCustomerLocations(locations) };
+    }),
+
+    lookupLocation: protectedProcedure
+      .input(locationLookupInput)
+      .mutation(async ({ input }) => lookupCustomerLocation({ cep: input.cep ?? undefined, cidade: input.cidade ?? undefined, uf: input.uf ?? undefined })),
+
+    create: protectedProcedure
+      .input(customerLocationInput)
+      .mutation(async ({ ctx, input }) => {
+        const location = await lookupCustomerLocation({ cep: input.cep ?? undefined, cidade: input.cidade ?? undefined, uf: input.uf ?? undefined });
+        const id = await db.insertCustomerLocation({
+          userId: ctx.user.id,
+          nome: input.nome,
+          cep: location.cep,
+          cidade: location.cidade,
+          uf: location.uf,
+          estado: location.estado,
+          codigoIbge: location.codigoIbge,
+          fonteLocalizacao: location.fonteLocalizacao,
+        });
+        return { success: true, id, location };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.deleteCustomerLocation(input.id, ctx.user.id);
         return { success: true };
       }),
   }),

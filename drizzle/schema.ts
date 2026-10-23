@@ -146,3 +146,21 @@ export const supplyConsumptions = mysqlTable("supply_consumptions", {
 
 export type SupplyConsumption = typeof supplyConsumptions.$inferSelect;
 export type InsertSupplyConsumption = typeof supplyConsumptions.$inferInsert;
+
+/** Cadastro geográfico resumido dos clientes, sem exigir endereço completo. */
+export const customerLocations = mysqlTable("customer_locations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  nome: varchar("nome", { length: 255 }).notNull(),
+  cep: varchar("cep", { length: 9 }),
+  cidade: varchar("cidade", { length: 255 }).notNull(),
+  uf: varchar("uf", { length: 2 }).notNull(),
+  estado: varchar("estado", { length: 64 }).notNull(),
+  codigoIbge: varchar("codigoIbge", { length: 16 }),
+  fonteLocalizacao: mysqlEnum("fonteLocalizacao", ["cep", "cidade_uf", "manual"]).default("manual").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CustomerLocation = typeof customerLocations.$inferSelect;
+export type InsertCustomerLocation = typeof customerLocations.$inferInsert;

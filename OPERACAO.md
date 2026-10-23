@@ -50,3 +50,10 @@ Importe um PDF por vez, confirme o ano e revise linhas rejeitadas antes de usar 
 No menu lateral, abra **Preços e custos**. Cadastre o custo de compra e o preço de venda por tipo de placa. Cada novo lançamento entra no histórico com uma data de vigência; para recalcular períodos antigos corretamente, informe a data em que aquele preço começou a valer.
 
 Cadastre os insumos do setor com unidade e custo unitário. Depois registre o consumo escolhendo se ele representa um gasto por dia, por semana ou por quantidade de placas. No caso de consumo por placas, informe também quantas placas foram produzidas no lançamento. O painel calcula faturamento estimado, custo de compra, custo de insumos, custo total, custo médio por placa e margem bruta.
+
+
+## Mapa e cobertura de clientes
+
+Abra **Mapa de clientes** no menu lateral. Informe o nome do cliente e o CEP; o sistema consulta o ViaCEP e preenche a cidade e o estado. Quando o CEP não existe mais ou não é localizado, informe a cidade e selecione a UF para o sistema validar a localidade pelo IBGE. Não é necessário informar rua, número ou complemento.
+
+O mapa mostra os 26 estados e o Distrito Federal, usando intensidade de cor conforme a quantidade de clientes cadastrados. Abaixo do mapa ficam o ranking por estado, as cidades atendidas e a lista para revisão ou remoção de cadastros.

@@ -35,6 +35,7 @@ import { describeClientFilter } from "@/lib/clientFilterLabel";
 import BIWorkspace from "./BIWorkspace";
 import StockManagement from "./StockManagement";
 import CostsManagement from "./CostsManagement";
+import CustomerCoverage from "./CustomerCoverage";
 import ClientProductionAnalysis from "./ClientProductionAnalysis";
 import ProductionAssistant from "./ProductionAssistant";
 
@@ -68,11 +69,13 @@ export default function DashboardContent({ user }: DashboardContentProps) {
     incluirDetalhesClientes: true,
     incluirComparacao: true,
   });
-  const [activeModule, setActiveModule] = useState<"PRODUCAO" | "ESTOQUE" | "CLIENTE" | "CUSTOS">("PRODUCAO");
+  const [activeModule, setActiveModule] = useState<"PRODUCAO" | "ESTOQUE" | "CLIENTE" | "CUSTOS" | "COBERTURA">("PRODUCAO");
 
   useEffect(() => {
     const navigateModule = (event: Event) => {
-      if ((event as CustomEvent<string>).detail === "custos") setActiveModule("CUSTOS");
+      const destination = (event as CustomEvent<string>).detail;
+      if (destination === "custos") setActiveModule("CUSTOS");
+      if (destination === "cobertura") setActiveModule("COBERTURA");
     };
     window.addEventListener("bi:navigate", navigateModule);
     return () => window.removeEventListener("bi:navigate", navigateModule);
@@ -491,6 +494,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
           <Button variant={activeModule === "ESTOQUE" ? "default" : "ghost"} onClick={() => setActiveModule("ESTOQUE")}>Controle de estoque</Button>
           <Button variant={activeModule === "CLIENTE" ? "default" : "ghost"} onClick={() => setActiveModule("CLIENTE")}>Análise por cliente</Button>
           <Button variant={activeModule === "CUSTOS" ? "default" : "ghost"} onClick={() => setActiveModule("CUSTOS")}>Preços e custos</Button>
+          <Button variant={activeModule === "COBERTURA" ? "default" : "ghost"} onClick={() => setActiveModule("COBERTURA")}>Mapa de clientes</Button>
         </div>
 
         {analyticsQuery.isLoading ? (
@@ -521,6 +525,8 @@ export default function DashboardContent({ user }: DashboardContentProps) {
             <StockManagement tiposPlaca={analyticsData.tiposPlaca} />
           ) : activeModule === "CUSTOS" ? (
             <div id="custos" className="scroll-mt-6"><CostsManagement tiposPlaca={analyticsData.tiposPlaca} /></div>
+          ) : activeModule === "COBERTURA" ? (
+            <div id="cobertura" className="scroll-mt-6"><CustomerCoverage /></div>
           ) : activeModule === "CLIENTE" ? (
             <div data-print-block><ClientProductionAnalysis clientes={analyticsData.clientes} /></div>
           ) : (

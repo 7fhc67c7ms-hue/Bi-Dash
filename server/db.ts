@@ -13,6 +13,7 @@ import {
   productPrices,
   supplies,
   supplyConsumptions,
+  customerLocations,
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -284,6 +285,28 @@ export async function deleteSupplyConsumption(id: number, userId: number) {
   if (!db) throw new Error("Database not available");
   return db.delete(supplyConsumptions)
     .where(and(eq(supplyConsumptions.id, id), eq(supplyConsumptions.userId, userId)));
+}
+
+export async function getCustomerLocationsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(customerLocations)
+    .where(eq(customerLocations.userId, userId))
+    .orderBy(customerLocations.estado, customerLocations.cidade, customerLocations.nome);
+}
+
+export async function insertCustomerLocation(data: typeof customerLocations.$inferInsert) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(customerLocations).values(data);
+  return Number((result as any)[0]?.insertId ?? 0);
+}
+
+export async function deleteCustomerLocation(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(customerLocations)
+    .where(and(eq(customerLocations.id, id), eq(customerLocations.userId, userId)));
 }
 
 export async function insertManyProductionData(data: InsertProductionData[]) {

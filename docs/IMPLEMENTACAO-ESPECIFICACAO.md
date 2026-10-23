@@ -212,3 +212,11 @@ O frontend agora inclui manifesto PWA, ícones para iPhone e service worker onli
 Foi adicionado o módulo **Preços e custos**, acessível no menu do dashboard e responsivo para PC e iPhone. Ele possui histórico de preços de compra e venda por tipo de placa, cadastro de insumos e lançamentos de consumo diário, semanal ou por quantidade de placas.
 
 Os valores monetários são persistidos em centavos. Quantidades de insumos aceitam casas decimais. O resumo relaciona a produção com os preços cuja data de vigência antecede o registro, calcula faturamento estimado, custo de compra, custo de insumos, custo total, custo médio por placa e margem bruta. Os registros de produção e estoque existentes não são modificados.
+
+
+## Cobertura geográfica de clientes
+
+Foi adicionada a tabela `customer_locations` e a seção **Mapa de clientes**. O cadastro armazena nome, CEP opcional, cidade, UF, estado, código IBGE e a origem da localização. A consulta de CEP usa o ViaCEP com fallback no BrasilAPI; quando o CEP não é localizado, cidade e UF são validadas pela API de localidades do IBGE. O frontend usa um mapa SVG estadual open source do Brasil com legenda de intensidade, ranking por UF, ranking por cidade e lista de clientes.
+
+
+Fontes externas utilizadas: [ViaCEP](https://viacep.com.br/) para consulta por CEP; [BrasilAPI](https://brasilapi.com.br/docs) como fallback de CEP; [API de localidades do IBGE](https://servicodados.ibge.gov.br/api/docs/localidades) para validação de cidade e UF; [@svg-country-maps/brazil](https://www.npmjs.com/package/@svg-country-maps/brazil) para o mapa estadual open source.
