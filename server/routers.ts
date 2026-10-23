@@ -11,6 +11,7 @@ import { z } from "zod";
 import * as db from "./db";
 import { invokeLLM, type Message as LLMMessage } from "./_core/llm";
 import { analisarEstoque } from "./stock";
+import { analisarCustos } from "./costs";
 import { analisarProducaoCliente } from "./clientAnalysis";
 import {
   agruparPorMes,
@@ -72,6 +73,28 @@ const stockMovementInput = z.object({
   observacao: z.string().trim().max(1000).optional().nullable(),
   ocorridoEm: z.string().datetime().optional(),
 });
+const productPriceInput = z.object({
+  tipoPlaca: z.string().trim().min(1).max(255),
+  custoCompraCentavos: z.number().int().nonnegative(),
+  precoVendaCentavos: z.number().int().nonnegative(),
+  vigenteDesde: z.string().datetime().optional(),
+  observacao: z.string().trim().max(1000).optional().nullable(),
+});
+const supplyInput = z.object({
+  nome: z.string().trim().min(1).max(255),
+  unidade: z.string().trim().min(1).max(64),
+  custoUnitarioCentavos: z.number().int().nonnegative(),
+  observacao: z.string().trim().max(1000).optional().nullable(),
+});
+const supplyConsumptionInput = z.object({
+  supplyId: z.number().int().positive(),
+  periodicidade: z.enum(["diaria", "semanal", "por_placas"]),
+  quantidade: z.number().positive().max(100000000),
+  custoUnitarioCentavos: z.number().int().nonnegative(),
+  placasProduzidas: z.number().int().nonnegative().optional().nullable(),
+  referenciaEm: z.string().datetime().optional(),
+  observacao: z.string().trim().max(1000).optional().nullable(),
+});
 
 function decodePdf(fileBase64: string) {
   const normalized = fileBase64.replace(/^data:application\/pdf;base64,/, "");
@@ -131,6 +154,86 @@ export const appRouter = router({
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "O assistente não retornou uma resposta válida." });
         }
         return { content };
+      }),
+  }),
+
+  costs: router({
+    getOverview: protectedProcedure.query(async ({ ctx }) => {
+      const [production, prices, supplies, consumptions] = await Promise.all([
+        db.getProductionDataByUser(ctx.user.id),
+        db.getProductPricesByUser(ctx.user.id),
+        db.getSuppliesByUser(ctx.user.id),
+        db.getSupplyConsumptionsByUser(ctx.user.id),
+      ]);
+      return {
+        prices,
+        supplies,
+        consumptions,
+        analysis: analisarCustos(production, prices, consumptions, supplies),
+      };
+    }),
+
+    createPrice: protectedProcedure
+      .input(productPriceInput)
+      .mutation(async ({ ctx, input }) => {
+        const id = await db.insertProductPrice({
+          userId: ctx.user.id,
+          tipoPlaca: input.tipoPlaca,
+          custoCompraCentavos: input.custoCompraCentavos,
+          precoVendaCentavos: input.precoVendaCentavos,
+          vigenteDesde: input.vigenteDesde ? new Date(input.vigenteDesde) : new Date(),
+          observacao: input.observacao ?? null,
+        });
+        return { success: true, id };
+      }),
+
+    createSupply: protectedProcedure
+      .input(supplyInput)
+      .mutation(async ({ ctx, input }) => {
+        const id = await db.insertSupply({
+          userId: ctx.user.id,
+          nome: input.nome,
+          unidade: input.unidade,
+          custoUnitarioCentavos: input.custoUnitarioCentavos,
+          observacao: input.observacao ?? null,
+          ativo: true,
+        });
+        return { success: true, id };
+      }),
+
+    updateSupply: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), ativo: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateSupply(input.id, ctx.user.id, { ativo: input.ativo });
+        return { success: true };
+      }),
+
+    createConsumption: protectedProcedure
+      .input(supplyConsumptionInput)
+      .mutation(async ({ ctx, input }) => {
+        const supplies = await db.getSuppliesByUser(ctx.user.id);
+        const supply = supplies.find(item => item.id === input.supplyId);
+        if (!supply) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Insumo não encontrado." });
+        }
+        const id = await db.insertSupplyConsumption({
+          userId: ctx.user.id,
+          supplyId: supply.id,
+          periodicidade: input.periodicidade,
+          quantidade: String(input.quantidade),
+          custoUnitarioCentavos: input.custoUnitarioCentavos,
+          placasProduzidas: input.placasProduzidas ?? null,
+          referenciaEm: input.referenciaEm ? new Date(input.referenciaEm) : new Date(),
+          observacao: input.observacao ?? null,
+        });
+        return { success: true, id };
+      }),
+
+    deleteConsumption: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.deleteSupplyConsumption(input.id, ctx.user.id);
+        return { success: true };
       }),
   }),
 

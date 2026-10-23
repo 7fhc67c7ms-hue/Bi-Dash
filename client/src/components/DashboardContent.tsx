@@ -34,6 +34,7 @@ import {
 import { describeClientFilter } from "@/lib/clientFilterLabel";
 import BIWorkspace from "./BIWorkspace";
 import StockManagement from "./StockManagement";
+import CostsManagement from "./CostsManagement";
 import ClientProductionAnalysis from "./ClientProductionAnalysis";
 import ProductionAssistant from "./ProductionAssistant";
 
@@ -67,7 +68,15 @@ export default function DashboardContent({ user }: DashboardContentProps) {
     incluirDetalhesClientes: true,
     incluirComparacao: true,
   });
-  const [activeModule, setActiveModule] = useState<"PRODUCAO" | "ESTOQUE" | "CLIENTE">("PRODUCAO");
+  const [activeModule, setActiveModule] = useState<"PRODUCAO" | "ESTOQUE" | "CLIENTE" | "CUSTOS">("PRODUCAO");
+
+  useEffect(() => {
+    const navigateModule = (event: Event) => {
+      if ((event as CustomEvent<string>).detail === "custos") setActiveModule("CUSTOS");
+    };
+    window.addEventListener("bi:navigate", navigateModule);
+    return () => window.removeEventListener("bi:navigate", navigateModule);
+  }, []);
 
   const queryInput = useMemo(
     () => ({
@@ -481,6 +490,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
           <Button variant={activeModule === "PRODUCAO" ? "default" : "ghost"} onClick={() => setActiveModule("PRODUCAO")}>Controle principal de produção</Button>
           <Button variant={activeModule === "ESTOQUE" ? "default" : "ghost"} onClick={() => setActiveModule("ESTOQUE")}>Controle de estoque</Button>
           <Button variant={activeModule === "CLIENTE" ? "default" : "ghost"} onClick={() => setActiveModule("CLIENTE")}>Análise por cliente</Button>
+          <Button variant={activeModule === "CUSTOS" ? "default" : "ghost"} onClick={() => setActiveModule("CUSTOS")}>Preços e custos</Button>
         </div>
 
         {analyticsQuery.isLoading ? (
@@ -509,6 +519,8 @@ export default function DashboardContent({ user }: DashboardContentProps) {
         ) : analyticsData ? (
           activeModule === "ESTOQUE" ? (
             <StockManagement tiposPlaca={analyticsData.tiposPlaca} />
+          ) : activeModule === "CUSTOS" ? (
+            <div id="custos" className="scroll-mt-6"><CostsManagement tiposPlaca={analyticsData.tiposPlaca} /></div>
           ) : activeModule === "CLIENTE" ? (
             <div data-print-block><ClientProductionAnalysis clientes={analyticsData.clientes} /></div>
           ) : (

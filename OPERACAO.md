@@ -43,3 +43,10 @@ A secção **Inteligência de mercado** resume sinais observados em fornecedores
 ## Boas práticas
 
 Importe um PDF por vez, confirme o ano e revise linhas rejeitadas antes de usar o total para decisões. Não carregue documentos além do necessário. Se uma importação falhar, consulte o histórico e tente novamente apenas depois de verificar o ficheiro. Para análises comerciais mais profundas, mantenha preço, custo, canal, prazo prometido, prazo realizado e retrabalho junto do pedido; quantidade sozinha não mede margem.
+
+
+## Preços, custos e insumos
+
+No menu lateral, abra **Preços e custos**. Cadastre o custo de compra e o preço de venda por tipo de placa. Cada novo lançamento entra no histórico com uma data de vigência; para recalcular períodos antigos corretamente, informe a data em que aquele preço começou a valer.
+
+Cadastre os insumos do setor com unidade e custo unitário. Depois registre o consumo escolhendo se ele representa um gasto por dia, por semana ou por quantidade de placas. No caso de consumo por placas, informe também quantas placas foram produzidas no lançamento. O painel calcula faturamento estimado, custo de compra, custo de insumos, custo total, custo médio por placa e margem bruta.

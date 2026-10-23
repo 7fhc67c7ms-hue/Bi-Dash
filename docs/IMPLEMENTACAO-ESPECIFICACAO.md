@@ -205,3 +205,10 @@ A aplicação mantém uma única fonte oficial no backend remoto. O PC continua 
 O estoque agora possui edição protegida por `version`, rejeição de alterações baseadas em versão antiga e auditoria transacional de criação, atualização e remoção. A tabela `stock_movement_audit` guarda snapshots sem alterar os movimentos históricos existentes. A interface exibe o rastro de alterações e sinaliza perda de conexão; uma ação só é considerada concluída após confirmação do backend.
 
 O frontend agora inclui manifesto PWA, ícones para iPhone e service worker online-first. O service worker não intercepta endpoints `/api/` e não cria uma fila offline de alterações, evitando divergência local. O iPhone pode ser instalado na Tela de Início, mas alterações de estoque exigem conexão e confirmação do servidor.
+
+
+## Módulo financeiro operacional
+
+Foi adicionado o módulo **Preços e custos**, acessível no menu do dashboard e responsivo para PC e iPhone. Ele possui histórico de preços de compra e venda por tipo de placa, cadastro de insumos e lançamentos de consumo diário, semanal ou por quantidade de placas.
+
+Os valores monetários são persistidos em centavos. Quantidades de insumos aceitam casas decimais. O resumo relaciona a produção com os preços cuja data de vigência antecede o registro, calcula faturamento estimado, custo de compra, custo de insumos, custo total, custo médio por placa e margem bruta. Os registros de produção e estoque existentes não são modificados.

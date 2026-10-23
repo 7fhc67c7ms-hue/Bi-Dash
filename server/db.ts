@@ -10,6 +10,9 @@ import {
   stockMovements,
   stockMovementAudit,
   InsertStockMovement,
+  productPrices,
+  supplies,
+  supplyConsumptions,
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -208,6 +211,79 @@ export async function deleteProductionDataByUpload(uploadId: number, userId: num
   if (!db) throw new Error("Database not available");
   return db.delete(productionData)
     .where(and(eq(productionData.uploadId, uploadId), eq(productionData.userId, userId)));
+}
+
+export async function getProductPricesByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(productPrices)
+    .where(eq(productPrices.userId, userId))
+    .orderBy(desc(productPrices.vigenteDesde), desc(productPrices.id));
+}
+
+export async function insertProductPrice(data: typeof productPrices.$inferInsert) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(productPrices).values(data);
+  return Number((result as any)[0]?.insertId ?? 0);
+}
+
+export async function getSuppliesByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(supplies)
+    .where(eq(supplies.userId, userId))
+    .orderBy(desc(supplies.ativo), supplies.nome);
+}
+
+export async function insertSupply(data: typeof supplies.$inferInsert) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(supplies).values(data);
+  return Number((result as any)[0]?.insertId ?? 0);
+}
+
+export async function updateSupply(id: number, userId: number, data: Partial<Pick<typeof supplies.$inferInsert, "nome" | "unidade" | "custoUnitarioCentavos" | "ativo" | "observacao">>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(supplies).set(data)
+    .where(and(eq(supplies.id, id), eq(supplies.userId, userId)));
+}
+
+export async function getSupplyConsumptionsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: supplyConsumptions.id,
+    userId: supplyConsumptions.userId,
+    supplyId: supplyConsumptions.supplyId,
+    periodicidade: supplyConsumptions.periodicidade,
+    quantidade: supplyConsumptions.quantidade,
+    custoUnitarioCentavos: supplyConsumptions.custoUnitarioCentavos,
+    placasProduzidas: supplyConsumptions.placasProduzidas,
+    referenciaEm: supplyConsumptions.referenciaEm,
+    observacao: supplyConsumptions.observacao,
+    createdAt: supplyConsumptions.createdAt,
+    supplyNome: supplies.nome,
+    supplyUnidade: supplies.unidade,
+  }).from(supplyConsumptions)
+    .innerJoin(supplies, eq(supplyConsumptions.supplyId, supplies.id))
+    .where(eq(supplyConsumptions.userId, userId))
+    .orderBy(desc(supplyConsumptions.referenciaEm), desc(supplyConsumptions.id));
+}
+
+export async function insertSupplyConsumption(data: typeof supplyConsumptions.$inferInsert) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(supplyConsumptions).values(data);
+  return Number((result as any)[0]?.insertId ?? 0);
+}
+
+export async function deleteSupplyConsumption(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(supplyConsumptions)
+    .where(and(eq(supplyConsumptions.id, id), eq(supplyConsumptions.userId, userId)));
 }
 
 export async function insertManyProductionData(data: InsertProductionData[]) {

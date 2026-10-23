@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, decimal, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -98,3 +98,51 @@ export const stockMovementAudit = mysqlTable("stock_movement_audit", {
 
 export type StockMovementAudit = typeof stockMovementAudit.$inferSelect;
 export type InsertStockMovementAudit = typeof stockMovementAudit.$inferInsert;
+
+/** Histórico de preço por tipo de placa; cada lançamento preserva sua vigência. */
+export const productPrices = mysqlTable("product_prices", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  tipoPlaca: varchar("tipoPlaca", { length: 255 }).notNull(),
+  custoCompraCentavos: int("custoCompraCentavos").notNull(),
+  precoVendaCentavos: int("precoVendaCentavos").notNull(),
+  vigenteDesde: timestamp("vigenteDesde").defaultNow().notNull(),
+  observacao: text("observacao"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ProductPrice = typeof productPrices.$inferSelect;
+export type InsertProductPrice = typeof productPrices.$inferInsert;
+
+/** Cadastro de materiais consumidos pelo setor. */
+export const supplies = mysqlTable("supplies", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  nome: varchar("nome", { length: 255 }).notNull(),
+  unidade: varchar("unidade", { length: 64 }).notNull(),
+  custoUnitarioCentavos: int("custoUnitarioCentavos").notNull(),
+  ativo: boolean("ativo").default(true).notNull(),
+  observacao: text("observacao"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Supply = typeof supplies.$inferSelect;
+export type InsertSupply = typeof supplies.$inferInsert;
+
+/** Lançamentos de consumo com frequência diária, semanal ou por placas. */
+export const supplyConsumptions = mysqlTable("supply_consumptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  supplyId: int("supplyId").notNull().references(() => supplies.id),
+  periodicidade: mysqlEnum("periodicidade", ["diaria", "semanal", "por_placas"]).notNull(),
+  quantidade: decimal("quantidade", { precision: 12, scale: 3 }).notNull(),
+  custoUnitarioCentavos: int("custoUnitarioCentavos").notNull(),
+  placasProduzidas: int("placasProduzidas"),
+  referenciaEm: timestamp("referenciaEm").defaultNow().notNull(),
+  observacao: text("observacao"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SupplyConsumption = typeof supplyConsumptions.$inferSelect;
+export type InsertSupplyConsumption = typeof supplyConsumptions.$inferInsert;

@@ -135,3 +135,13 @@
 - [x] Adicionar edição segura de movimentos de estoque no frontend mobile e desktop, com confirmação e recarga após conflito.
 - [x] Melhorar mensagens de estado offline/erro de conexão sem gravar alterações localmente sem confirmação do backend.
 - [x] Validar typecheck, testes, build, manifesto, PWA, permissões, persistência e sincronização sem apagar dados de produção.
+
+
+## Atualização aprovada — preços, custos e insumos
+- [x] Criar histórico de preços por tipo de placa com valor de compra, valor de venda e vigência, sem alterar relatórios históricos existentes.
+- [x] Criar cadastro de insumos com nome, unidade, custo unitário e situação ativa/inativa.
+- [x] Permitir lançar consumo de insumos por período diário, semanal ou por quantidade de placas, com quantidade, custo unitário no momento do lançamento, período de referência e observação.
+- [x] Calcular faturamento estimado, custo de compra, custo de insumos, custo total, custo médio por placa e margem bruta.
+- [x] Integrar o módulo ao dashboard responsivo, com acesso no PC e no iPhone usando o mesmo banco remoto.
+- [x] Aplicar apenas migração aditiva, preservando os dados atuais de produção, estoque e autenticação.
+- [x] Validar typecheck, testes, build, persistência e atualização do site sem reinstalação do aplicativo Windows.
