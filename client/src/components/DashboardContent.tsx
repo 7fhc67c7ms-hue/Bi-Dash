@@ -295,15 +295,15 @@ export default function DashboardContent({ user }: DashboardContentProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-background/80 p-4 sm:p-6 lg:p-10">
       <div className="mx-auto max-w-[1600px]">
-        <header data-print-block className="mb-8 flex flex-col gap-5 border-b border-border/60 pb-6 lg:flex-row lg:items-end lg:justify-between">
+        <header data-print-block className="mb-8 flex flex-col gap-6 border-b border-border/70 pb-7 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.8)]" />
-              Cockpit operacional
+            <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+              <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_14px_rgba(15,118,110,0.55)]" />
+              Centro de operações · visão geral
             </div>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
+            <h1 className="bi-shell-title text-3xl font-semibold text-foreground md:text-4xl">
               Dashboard de Produção
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
@@ -312,7 +312,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
             </p>
           </div>
           <div data-print-ui className="flex flex-wrap items-center gap-3">
-            <span className="text-sm text-muted-foreground">
+            <span className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary">
               {user?.name || user?.email}
             </span>
             <Button
@@ -489,7 +489,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
           </Card>
         </section>
 
-        <div data-print-ui className="mb-8 flex flex-wrap gap-2 rounded-xl border border-border/70 bg-card p-2 shadow-sm" aria-label="Módulos do sistema">
+        <div data-print-ui className="mb-8 flex flex-wrap gap-1.5 rounded-2xl border border-border/70 bg-card/80 p-2 shadow-sm backdrop-blur" aria-label="Módulos do sistema">
           <Button variant={activeModule === "PRODUCAO" ? "default" : "ghost"} onClick={() => setActiveModule("PRODUCAO")}>Controle principal de produção</Button>
           <Button variant={activeModule === "ESTOQUE" ? "default" : "ghost"} onClick={() => setActiveModule("ESTOQUE")}>Controle de estoque</Button>
           <Button variant={activeModule === "CLIENTE" ? "default" : "ghost"} onClick={() => setActiveModule("CLIENTE")}>Análise por cliente</Button>
