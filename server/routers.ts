@@ -143,6 +143,26 @@ const formulaInput = z.object({
   status: z.enum(["rascunho", "ativa"]).default("rascunho"),
   componentes: z.array(formulaComponentInput).min(1).max(100),
 });
+const productionOrderInput = z.object({
+  codigo: z.string().trim().min(1).max(64).regex(/^[A-Za-z0-9._-]+$/),
+  produtoId: z.number().int().positive(),
+  formulaId: z.number().int().positive().optional().nullable(),
+  quantidadePlanejada: z.number().positive().max(100000000),
+  prioridade: z.number().int().min(1).max(5).default(3),
+  setorId: z.number().int().positive().optional().nullable(),
+  responsavel: z.string().trim().max(255).optional().nullable(),
+  planejadaPara: z.string().datetime().optional().nullable(),
+  prazoEm: z.string().datetime().optional().nullable(),
+  observacao: z.string().trim().max(2000).optional().nullable(),
+  eventKey: z.string().trim().min(8).max(128),
+});
+const productionOrderTransitionInput = z.object({
+  id: z.number().int().positive(),
+  evento: z.enum(["planejada", "iniciada", "pausada", "retomada", "produzida", "aprovada", "rejeitada", "concluida", "cancelada"]),
+  quantidade: z.number().positive().optional().nullable(),
+  chaveIdempotencia: z.string().trim().min(8).max(128),
+  observacao: z.string().trim().max(2000).optional().nullable(),
+});
 
 function rethrowStockMutationError(error: unknown): never {
   if (error instanceof db.StockMovementConflictError) {
@@ -505,6 +525,55 @@ export const appRouter = router({
         if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "Ficha técnica não encontrada." });
         return { success: true };
       }),
+  }),
+
+  productionOrders: router({
+    list: protectedProcedure.query(({ ctx }) => db.getProductionOrdersByUser(ctx.user.id)),
+
+    create: protectedProcedure.input(productionOrderInput).mutation(async ({ ctx, input }) => {
+      const masterData = await db.getMasterDataByUser(ctx.user.id);
+      const product = masterData.items.find(item => item.id === input.produtoId && item.ativo);
+      if (!product) throw new TRPCError({ code: "BAD_REQUEST", message: "Produto ativo não encontrado." });
+      if (input.setorId && !masterData.locations.some(location => location.id === input.setorId && location.ativo && location.tipo === "setor")) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Setor ativo não encontrado." });
+      }
+      const formulas = await db.getProductFormulasByUser(ctx.user.id);
+      const formula = input.formulaId ? formulas.find(value => value.id === input.formulaId && value.produtoId === product.id && value.status === "ativa") : undefined;
+      if (input.formulaId && !formula) throw new TRPCError({ code: "BAD_REQUEST", message: "A ficha técnica deve estar ativa e pertencer ao produto." });
+      const formulaSnapshot = formula ? JSON.stringify({ id: formula.id, versao: formula.versao, produtoId: formula.produtoId, rendimento: formula.rendimento, perdaPercentual: formula.perdaPercentual, componentes: formula.componentes }) : null;
+      try {
+        const id = await db.createProductionOrder(ctx.user.id, {
+          codigo: input.codigo,
+          produtoId: input.produtoId,
+          formulaId: input.formulaId ?? null,
+          formulaSnapshot,
+          status: "rascunho",
+          quantidadePlanejada: String(input.quantidadePlanejada),
+          prioridade: input.prioridade,
+          setorId: input.setorId ?? null,
+          responsavel: input.responsavel ?? null,
+          planejadaPara: input.planejadaPara ? new Date(input.planejadaPara) : null,
+          prazoEm: input.prazoEm ? new Date(input.prazoEm) : null,
+          observacao: input.observacao ?? null,
+        }, input.eventKey);
+        return { success: true, id };
+      } catch (error) {
+        return rethrowMasterDataError(error);
+      }
+    }),
+
+    transition: protectedProcedure.input(productionOrderTransitionInput).mutation(async ({ ctx, input }) => {
+      const quantityRequired = ["iniciada", "produzida", "aprovada", "rejeitada"].includes(input.evento);
+      if (quantityRequired && (!input.quantidade || input.quantidade <= 0)) throw new TRPCError({ code: "BAD_REQUEST", message: "Informe uma quantidade positiva para este evento." });
+      const result = await db.transitionProductionOrder(input.id, ctx.user.id, {
+        evento: input.evento,
+        quantidade: input.quantidade ? String(input.quantidade) : null,
+        chaveIdempotencia: input.chaveIdempotencia,
+        observacao: input.observacao ?? null,
+      });
+      if (!result.found) throw new TRPCError({ code: "NOT_FOUND", message: "Ordem de produção não encontrada." });
+      return { success: true, duplicate: result.duplicate };
+    }),
   }),
 
   production: router({

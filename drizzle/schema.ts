@@ -268,3 +268,47 @@ export const formulaComponents = mysqlTable("formula_components", {
 
 export type FormulaComponent = typeof formulaComponents.$inferSelect;
 export type InsertFormulaComponent = typeof formulaComponents.$inferInsert;
+
+export const productionOrders = mysqlTable("production_orders", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  codigo: varchar("codigo", { length: 64 }).notNull(),
+  produtoId: int("produtoId").notNull().references(() => catalogItems.id),
+  formulaId: int("formulaId").references(() => productFormulas.id),
+  formulaSnapshot: text("formulaSnapshot"),
+  status: mysqlEnum("status", ["rascunho", "planejada", "em_producao", "pausada", "concluida", "cancelada"]).default("rascunho").notNull(),
+  quantidadePlanejada: decimal("quantidadePlanejada", { precision: 14, scale: 4 }).notNull(),
+  quantidadeIniciada: decimal("quantidadeIniciada", { precision: 14, scale: 4 }).default("0").notNull(),
+  quantidadeProduzida: decimal("quantidadeProduzida", { precision: 14, scale: 4 }).default("0").notNull(),
+  quantidadeAprovada: decimal("quantidadeAprovada", { precision: 14, scale: 4 }).default("0").notNull(),
+  quantidadeRejeitada: decimal("quantidadeRejeitada", { precision: 14, scale: 4 }).default("0").notNull(),
+  prioridade: int("prioridade").default(3).notNull(),
+  setorId: int("setorId").references(() => storageLocations.id),
+  responsavel: varchar("responsavel", { length: 255 }),
+  planejadaPara: timestamp("planejadaPara"),
+  prazoEm: timestamp("prazoEm"),
+  observacao: text("observacao"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({
+  userCodeUnique: uniqueIndex("production_orders_user_code_unique").on(table.userId, table.codigo),
+}));
+
+export type ProductionOrder = typeof productionOrders.$inferSelect;
+export type InsertProductionOrder = typeof productionOrders.$inferInsert;
+
+export const productionOrderEvents = mysqlTable("production_order_events", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  orderId: int("orderId").notNull().references(() => productionOrders.id),
+  evento: mysqlEnum("evento", ["criada", "planejada", "iniciada", "pausada", "retomada", "produzida", "aprovada", "rejeitada", "concluida", "cancelada"]).notNull(),
+  quantidade: decimal("quantidade", { precision: 14, scale: 4 }),
+  chaveIdempotencia: varchar("chaveIdempotencia", { length: 128 }).notNull(),
+  observacao: text("observacao"),
+  ocorridoEm: timestamp("ocorridoEm").defaultNow().notNull(),
+}, table => ({
+  eventKeyUnique: uniqueIndex("production_order_events_user_key_unique").on(table.userId, table.chaveIdempotencia),
+}));
+
+export type ProductionOrderEvent = typeof productionOrderEvents.$inferSelect;
+export type InsertProductionOrderEvent = typeof productionOrderEvents.$inferInsert;

@@ -85,6 +85,13 @@
       "when": 1792978109310,
       "tag": "0011_handy_ghost_rider",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1793021035479,
+      "tag": "0012_opposite_sway",
+      "breakpoints": true
     }
   ]
 }

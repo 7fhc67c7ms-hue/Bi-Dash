@@ -40,6 +40,7 @@ import ClientProductionAnalysis from "./ClientProductionAnalysis";
 import ProductionAssistant from "./ProductionAssistant";
 import MasterDataManagement from "./MasterDataManagement";
 import FormulaManagement from "./FormulaManagement";
+import ProductionOrderManagement from "./ProductionOrderManagement";
 
 interface DashboardContentProps {
   user: User | null;
@@ -71,7 +72,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
     incluirDetalhesClientes: true,
     incluirComparacao: true,
   });
-  const [activeModule, setActiveModule] = useState<"PRODUCAO" | "ESTOQUE" | "CLIENTE" | "CUSTOS" | "COBERTURA" | "CADASTROS" | "FICHAS">("PRODUCAO");
+  const [activeModule, setActiveModule] = useState<"PRODUCAO" | "ESTOQUE" | "CLIENTE" | "CUSTOS" | "COBERTURA" | "CADASTROS" | "FICHAS" | "ORDENS">("PRODUCAO");
 
   useEffect(() => {
     const navigateModule = (event: Event) => {
@@ -80,6 +81,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
       if (destination === "cobertura") setActiveModule("COBERTURA");
       if (destination === "cadastros") setActiveModule("CADASTROS");
       if (destination === "fichas") setActiveModule("FICHAS");
+      if (destination === "ordens") setActiveModule("ORDENS");
     };
     window.addEventListener("bi:navigate", navigateModule);
     return () => window.removeEventListener("bi:navigate", navigateModule);
@@ -501,6 +503,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
           <Button variant={activeModule === "COBERTURA" ? "default" : "ghost"} onClick={() => setActiveModule("COBERTURA")}>Mapa de clientes</Button>
           <Button variant={activeModule === "CADASTROS" ? "default" : "ghost"} onClick={() => setActiveModule("CADASTROS")}>Cadastros mestres</Button>
           <Button variant={activeModule === "FICHAS" ? "default" : "ghost"} onClick={() => setActiveModule("FICHAS")}>Fichas técnicas</Button>
+          <Button variant={activeModule === "ORDENS" ? "default" : "ghost"} onClick={() => setActiveModule("ORDENS")}>Ordens de produção</Button>
         </div>
 
         {analyticsQuery.isLoading ? (
@@ -527,7 +530,9 @@ export default function DashboardContent({ user }: DashboardContentProps) {
             </CardContent>
           </Card>
         ) : analyticsData ? (
-          activeModule === "FICHAS" ? (
+          activeModule === "ORDENS" ? (
+            <ProductionOrderManagement />
+          ) : activeModule === "FICHAS" ? (
             <FormulaManagement />
           ) : activeModule === "CADASTROS" ? (
             <MasterDataManagement />

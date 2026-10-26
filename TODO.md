@@ -34,10 +34,10 @@
 - [ ] Preservar snapshot da ficha usada por cada ordem; depende do Bloco 5, pois ainda não existe ordem de produção persistida.
 
 ## Bloco 5 — PCP e ordens de produção
-- [ ] Criar plano/ordem com status, quantidades planejadas/iniciadas/produzidas/aprovadas/rejeitadas, datas e prioridade.
-- [ ] Vincular setor/máquina/responsável quando cadastrados.
-- [ ] Registrar pausas, retomadas, cancelamento, conclusão e histórico.
-- [ ] Integrar reservas/consumo/produção acabada usando eventos idempotentes.
+- [x] Criar plano/ordem com status, quantidades planejadas/iniciadas/produzidas/aprovadas/rejeitadas, datas e prioridade.
+- [x] Vincular setor e responsável quando cadastrados; máquina permanece pendente de cadastro de ativos.
+- [x] Registrar pausas, retomadas, cancelamento, conclusão e histórico de eventos.
+- [ ] Integrar reservas/consumo/produção acabada usando eventos idempotentes; depende dos blocos de compras, qualidade e expedição.
 
 ## Bloco 6 — Compras e recebimento
 - [ ] Criar fornecedores, solicitações, cotações, pedidos, aprovações e condições.

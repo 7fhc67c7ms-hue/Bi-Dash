@@ -20,6 +20,8 @@ import {
   storageLocations,
   productFormulas,
   formulaComponents,
+  productionOrders,
+  productionOrderEvents,
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -502,6 +504,67 @@ export async function setProductFormulaStatus(id: number, userId: number, status
     }
     await tx.update(productFormulas).set({ status }).where(and(eq(productFormulas.id, id), eq(productFormulas.userId, userId)));
     return true;
+  });
+}
+
+export async function getProductionOrdersByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const [orders, events, items] = await Promise.all([
+    db.select().from(productionOrders).where(eq(productionOrders.userId, userId)).orderBy(desc(productionOrders.createdAt), desc(productionOrders.id)),
+    db.select().from(productionOrderEvents).where(eq(productionOrderEvents.userId, userId)).orderBy(desc(productionOrderEvents.ocorridoEm), desc(productionOrderEvents.id)),
+    db.select().from(catalogItems).where(eq(catalogItems.userId, userId)),
+  ]);
+  const itemById = new Map(items.map(item => [item.id, item]));
+  return orders.map(order => ({
+    ...order,
+    produto: itemById.get(order.produtoId) ?? null,
+    eventos: events.filter(event => event.orderId === order.id),
+  }));
+}
+
+export async function createProductionOrder(
+  userId: number,
+  data: Omit<typeof productionOrders.$inferInsert, "userId">,
+  eventKey: string,
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.transaction(async tx => {
+    const result = await tx.insert(productionOrders).values({ ...data, userId });
+    const orderId = Number((result as any)[0]?.insertId ?? 0);
+    await tx.insert(productionOrderEvents).values({ userId, orderId, evento: "criada", chaveIdempotencia: eventKey, observacao: data.observacao ?? null });
+    return orderId;
+  });
+}
+
+export async function transitionProductionOrder(
+  id: number,
+  userId: number,
+  data: Pick<typeof productionOrderEvents.$inferInsert, "evento" | "quantidade" | "chaveIdempotencia" | "observacao">,
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.transaction(async tx => {
+    const currentRows = await tx.select().from(productionOrders).where(and(eq(productionOrders.id, id), eq(productionOrders.userId, userId))).limit(1);
+    const current = currentRows[0];
+    if (!current) return { found: false, duplicate: false };
+    const duplicate = await tx.select({ id: productionOrderEvents.id }).from(productionOrderEvents)
+      .where(and(eq(productionOrderEvents.userId, userId), eq(productionOrderEvents.chaveIdempotencia, data.chaveIdempotencia))).limit(1);
+    if (duplicate.length) return { found: true, duplicate: true };
+    const quantity = data.quantidade ? Number(data.quantidade) : 0;
+    const changes: Partial<typeof productionOrders.$inferInsert> = {};
+    if (data.evento === "planejada") changes.status = "planejada";
+    if (data.evento === "iniciada" || data.evento === "retomada") { changes.status = "em_producao"; changes.quantidadeIniciada = String(Number(current.quantidadeIniciada) + quantity); }
+    if (data.evento === "pausada") changes.status = "pausada";
+    if (data.evento === "produzida") { changes.status = "em_producao"; changes.quantidadeProduzida = String(Number(current.quantidadeProduzida) + quantity); }
+    if (data.evento === "aprovada") { changes.quantidadeAprovada = String(Number(current.quantidadeAprovada) + quantity); }
+    if (data.evento === "rejeitada") { changes.quantidadeRejeitada = String(Number(current.quantidadeRejeitada) + quantity); }
+    if (data.evento === "concluida") changes.status = "concluida";
+    if (data.evento === "cancelada") changes.status = "cancelada";
+    await tx.insert(productionOrderEvents).values({ userId, orderId: id, ...data, quantidade: data.quantidade ?? null });
+    await tx.update(productionOrders).set(changes).where(and(eq(productionOrders.id, id), eq(productionOrders.userId, userId)));
+    return { found: true, duplicate: false };
   });
 }
 
