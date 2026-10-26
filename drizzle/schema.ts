@@ -1,4 +1,4 @@
-import { boolean, decimal, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, decimal, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -41,7 +41,9 @@ export const productionUploads = mysqlTable("production_uploads", {
   errorMessage: text("errorMessage"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, table => ({
+  userFileHashUnique: uniqueIndex("production_uploads_user_file_hash_unique").on(table.userId, table.fileHash),
+}));
 
 export const productionData = mysqlTable("production_data", {
   id: int("id").autoincrement().primaryKey(),

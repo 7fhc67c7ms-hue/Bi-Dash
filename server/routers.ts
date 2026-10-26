@@ -507,30 +507,25 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const pdfBuffer = decodePdf(input.fileBase64);
         const fileHash = createHash("sha256").update(pdfBuffer).digest("hex");
-        const existing = await db.getProductionUploadByHash(
-          ctx.user.id,
-          fileHash
-        );
-        // Uploads concluídos ou ainda em processamento são idempotentes.
-        // Uma falha anterior deve poder ser reprocessada sem alterar o PDF.
-        if (existing && existing.status !== "failed") {
-          return {
-            success: true,
-            duplicate: true,
-            uploadId: existing.id,
-            registrosInseridos: existing.rowsExtracted,
-          };
-        }
-
-        const safeFileName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const fileKey = `${ctx.user.id}/production-pdfs/${Date.now()}-${safeFileName}`;
-        const uploadId = await db.insertProductionUpload({
+        const claim = await db.claimProductionUpload({
           userId: ctx.user.id,
           fileName: input.fileName,
           fileHash,
           status: "processing",
           rowsExtracted: 0,
         });
+        if (claim.duplicate) {
+          return {
+            success: true,
+            duplicate: true,
+            uploadId: claim.uploadId,
+            registrosInseridos: claim.registrosInseridos,
+          };
+        }
+
+        const safeFileName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const fileKey = `${ctx.user.id}/production-pdfs/${fileHash}-${safeFileName}`;
+        const uploadId = claim.uploadId;
 
         try {
           const { url } = await storagePut(
@@ -543,7 +538,9 @@ export const appRouter = router({
           });
           const extraction = await extrairDadosDoPDFComQualidade(url);
           const extracted = extraction.dados;
-          await db.insertManyProductionData(
+          await db.completeProductionUpload(
+            uploadId,
+            ctx.user.id,
             extracted.map(item => ({
               userId: ctx.user.id,
               uploadId,
@@ -554,14 +551,13 @@ export const appRouter = router({
               mes: item.mes,
               ano: item.ano ?? input.ano,
               pdfFileName: input.fileName,
-            }))
+            })),
+            {
+              rowsExtracted: extracted.length,
+              rowsRejected: extraction.linhasRejeitadas,
+              duplicatesAvoided: extraction.duplicadosEvitados,
+            },
           );
-          await db.updateProductionUpload(uploadId, ctx.user.id, {
-            status: "completed",
-            rowsExtracted: extracted.length,
-            rowsRejected: extraction.linhasRejeitadas,
-            duplicatesAvoided: extraction.duplicadosEvitados,
-          });
           return {
             success: true,
             duplicate: false,

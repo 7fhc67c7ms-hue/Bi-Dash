@@ -19,46 +19,17 @@ import {
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
-let _schemaReady: Promise<void> | null = null;
-
-async function ensureProductionUploadColumns(db: ReturnType<typeof drizzle>) {
-  try {
-    const [rows] = await db.execute(sql`
-      SELECT COLUMN_NAME AS columnName
-      FROM information_schema.COLUMNS
-      WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME = 'production_uploads'
-        AND COLUMN_NAME IN ('rowsRejected', 'duplicatesAvoided')
-    `);
-    const columns = new Set(
-      (rows as unknown as Array<{ columnName?: string }>).map(row => row.columnName)
-    );
-    if (!columns.has("rowsRejected")) {
-      await db.execute(sql`ALTER TABLE production_uploads ADD COLUMN rowsRejected INT NOT NULL DEFAULT 0`);
-    }
-    if (!columns.has("duplicatesAvoided")) {
-      await db.execute(sql`ALTER TABLE production_uploads ADD COLUMN duplicatesAvoided INT NOT NULL DEFAULT 0`);
-    }
-  } catch (error) {
-    // A deploy with an older schema must not crash the whole server. The
-    // original error remains visible to the caller and can be repaired by the
-    // next retry or by applying the Drizzle migration manually.
-    console.warn("[Database] Could not reconcile production_uploads schema:", error);
-  }
-}
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
       _db = drizzle(process.env.DATABASE_URL);
-      _schemaReady = ensureProductionUploadColumns(_db);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
     }
   }
-  if (_db && _schemaReady) await _schemaReady;
   return _db;
 }
 
@@ -147,6 +118,95 @@ export async function getProductionUploadByHash(userId: number, fileHash: string
     .where(and(eq(productionUploads.userId, userId), eq(productionUploads.fileHash, fileHash)))
     .limit(1);
   return result[0];
+}
+
+function isDuplicateKeyError(error: unknown) {
+  const candidate = error as { code?: unknown; errno?: unknown };
+  return candidate.code === "ER_DUP_ENTRY" || candidate.errno === 1062;
+}
+
+/**
+ * Claims a production upload using the database uniqueness constraint.
+ * Application-level lookup alone is not enough because two devices can race.
+ */
+export async function claimProductionUpload(data: InsertProductionUpload) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  try {
+    const result = await db.insert(productionUploads).values(data);
+    return {
+      duplicate: false as const,
+      uploadId: Number((result as any)[0]?.insertId ?? 0),
+      reprocessed: false as const,
+    };
+  } catch (error) {
+    if (!isDuplicateKeyError(error)) throw error;
+
+    const claim = await db.transaction(async tx => {
+      const existingResult = await tx.select().from(productionUploads)
+        .where(and(eq(productionUploads.userId, data.userId), eq(productionUploads.fileHash, data.fileHash)))
+        .limit(1);
+      const existing = existingResult[0];
+      if (!existing) return { kind: "missing" as const };
+
+      if (existing.status !== "failed") {
+        return {
+          kind: "duplicate" as const,
+          uploadId: existing.id,
+          rowsExtracted: existing.rowsExtracted,
+        };
+      }
+
+      const reset = await tx.update(productionUploads)
+        .set({
+          fileName: data.fileName,
+          status: "processing",
+          rowsExtracted: 0,
+          rowsRejected: 0,
+          duplicatesAvoided: 0,
+          errorMessage: null,
+        })
+        .where(and(
+          eq(productionUploads.id, existing.id),
+          eq(productionUploads.userId, data.userId),
+          eq(productionUploads.status, "failed"),
+        ));
+      const affectedRows = Number((reset as any)[0]?.affectedRows ?? (reset as any).affectedRows ?? 0);
+      if (affectedRows !== 1) return { kind: "raced" as const };
+
+      await tx.delete(productionData).where(and(
+        eq(productionData.uploadId, existing.id),
+        eq(productionData.userId, data.userId),
+      ));
+      return { kind: "claimed" as const, uploadId: existing.id };
+    });
+
+    if (claim.kind === "duplicate") {
+      return {
+        duplicate: true as const,
+        uploadId: claim.uploadId,
+        registrosInseridos: claim.rowsExtracted,
+      };
+    }
+    if (claim.kind === "claimed") {
+      return {
+        duplicate: false as const,
+        uploadId: claim.uploadId,
+        reprocessed: true as const,
+      };
+    }
+
+    const current = await getProductionUploadByHash(data.userId, data.fileHash);
+    if (current && current.status !== "failed") {
+      return {
+        duplicate: true as const,
+        uploadId: current.id,
+        registrosInseridos: current.rowsExtracted,
+      };
+    }
+    throw error;
+  }
 }
 
 export async function insertProductionUpload(data: InsertProductionUpload) {
@@ -315,6 +375,33 @@ export async function insertManyProductionData(data: InsertProductionData[]) {
   if (data.length === 0) return;
   await db.transaction(async (tx) => {
     await tx.insert(productionData).values(data);
+  });
+}
+
+export async function completeProductionUpload(
+  uploadId: number,
+  userId: number,
+  data: InsertProductionData[],
+  summary: Pick<InsertProductionUpload, "rowsExtracted" | "rowsRejected" | "duplicatesAvoided">,
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.transaction(async tx => {
+    await tx.delete(productionData).where(and(
+      eq(productionData.uploadId, uploadId),
+      eq(productionData.userId, userId),
+    ));
+    if (data.length > 0) {
+      await tx.insert(productionData).values(data);
+    }
+    await tx.update(productionUploads)
+      .set({
+        status: "completed",
+        ...summary,
+        errorMessage: null,
+      })
+      .where(and(eq(productionUploads.id, uploadId), eq(productionUploads.userId, userId)));
   });
 }
 

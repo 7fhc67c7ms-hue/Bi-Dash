@@ -1,0 +1,1 @@
+ALTER TABLE `production_uploads` ADD CONSTRAINT `production_uploads_user_file_hash_unique` UNIQUE(`userId`,`fileHash`);
