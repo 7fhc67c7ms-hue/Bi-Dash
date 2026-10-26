@@ -78,6 +78,13 @@
       "when": 1792977917945,
       "tag": "0010_large_mister_sinister",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1792978109310,
+      "tag": "0011_handy_ghost_rider",
+      "breakpoints": true
     }
   ]
 }

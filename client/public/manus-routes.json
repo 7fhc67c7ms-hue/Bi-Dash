@@ -6,6 +6,7 @@
     { "path": "/dashboard#assistente", "title": "Assistente do BI" },
     { "path": "/dashboard#custos", "title": "Preços e custos" },
     { "path": "/dashboard#cobertura", "title": "Mapa de clientes" },
-    { "path": "/dashboard#cadastros", "title": "Cadastros mestres" }
+    { "path": "/dashboard#cadastros", "title": "Cadastros mestres" },
+    { "path": "/dashboard#fichas", "title": "Fichas técnicas" }
   ]
 }

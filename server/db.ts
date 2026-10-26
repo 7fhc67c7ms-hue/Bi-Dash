@@ -18,6 +18,8 @@ import {
   masterCategories,
   catalogItems,
   storageLocations,
+  productFormulas,
+  formulaComponents,
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -436,6 +438,71 @@ export async function updateStorageLocation(id: number, userId: number, data: Pa
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db.update(storageLocations).set(data).where(and(eq(storageLocations.id, id), eq(storageLocations.userId, userId)));
+}
+
+export async function getProductFormulasByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const [formulas, components, items] = await Promise.all([
+    db.select().from(productFormulas).where(eq(productFormulas.userId, userId)).orderBy(desc(productFormulas.createdAt), desc(productFormulas.versao)),
+    db.select().from(formulaComponents).where(eq(formulaComponents.userId, userId)).orderBy(formulaComponents.id),
+    db.select().from(catalogItems).where(eq(catalogItems.userId, userId)),
+  ]);
+  const itemById = new Map(items.map(item => [item.id, item]));
+  return formulas.map(formula => ({
+    ...formula,
+    produto: itemById.get(formula.produtoId) ?? null,
+    componentes: components
+      .filter(component => component.formulaId === formula.id)
+      .map(component => ({ ...component, componente: itemById.get(component.componenteId) ?? null })),
+  }));
+}
+
+export async function insertProductFormula(
+  userId: number,
+  data: Omit<typeof productFormulas.$inferInsert, "userId" | "versao">,
+  components: Array<Omit<typeof formulaComponents.$inferInsert, "userId" | "formulaId">>,
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.transaction(async tx => {
+    const latest = await tx.select({ versao: productFormulas.versao })
+      .from(productFormulas)
+      .where(and(eq(productFormulas.userId, userId), eq(productFormulas.produtoId, data.produtoId)))
+      .orderBy(desc(productFormulas.versao))
+      .limit(1);
+    const versao = Number(latest[0]?.versao ?? 0) + 1;
+    if (data.status === "ativa") {
+      await tx.update(productFormulas)
+        .set({ status: "inativa" })
+        .where(and(eq(productFormulas.userId, userId), eq(productFormulas.produtoId, data.produtoId), eq(productFormulas.status, "ativa")));
+    }
+    const result = await tx.insert(productFormulas).values({ ...data, userId, versao });
+    const formulaId = Number((result as any)[0]?.insertId ?? 0);
+    if (components.length > 0) {
+      await tx.insert(formulaComponents).values(components.map(component => ({ ...component, userId, formulaId })));
+    }
+    return { id: formulaId, versao };
+  });
+}
+
+export async function setProductFormulaStatus(id: number, userId: number, status: "rascunho" | "ativa" | "inativa") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.transaction(async tx => {
+    const currentResult = await tx.select().from(productFormulas)
+      .where(and(eq(productFormulas.id, id), eq(productFormulas.userId, userId)))
+      .limit(1);
+    const current = currentResult[0];
+    if (!current) return false;
+    if (status === "ativa") {
+      await tx.update(productFormulas)
+        .set({ status: "inativa" })
+        .where(and(eq(productFormulas.userId, userId), eq(productFormulas.produtoId, current.produtoId), eq(productFormulas.status, "ativa")));
+    }
+    await tx.update(productFormulas).set({ status }).where(and(eq(productFormulas.id, id), eq(productFormulas.userId, userId)));
+    return true;
+  });
 }
 
 export async function insertManyProductionData(data: InsertProductionData[]) {

@@ -232,3 +232,39 @@ export const storageLocations = mysqlTable("storage_locations", {
 
 export type StorageLocation = typeof storageLocations.$inferSelect;
 export type InsertStorageLocation = typeof storageLocations.$inferInsert;
+
+export const productFormulas = mysqlTable("product_formulas", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  produtoId: int("produtoId").notNull().references(() => catalogItems.id),
+  versao: int("versao").notNull(),
+  status: mysqlEnum("status", ["rascunho", "ativa", "inativa"]).default("rascunho").notNull(),
+  rendimento: decimal("rendimento", { precision: 12, scale: 4 }).notNull(),
+  perdaPercentual: decimal("perdaPercentual", { precision: 7, scale: 4 }).default("0").notNull(),
+  vigenteDesde: timestamp("vigenteDesde").defaultNow().notNull(),
+  observacao: text("observacao"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({
+  userProductVersionUnique: uniqueIndex("product_formulas_user_product_version_unique").on(table.userId, table.produtoId, table.versao),
+}));
+
+export type ProductFormula = typeof productFormulas.$inferSelect;
+export type InsertProductFormula = typeof productFormulas.$inferInsert;
+
+export const formulaComponents = mysqlTable("formula_components", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  formulaId: int("formulaId").notNull().references(() => productFormulas.id),
+  componenteId: int("componenteId").notNull().references(() => catalogItems.id),
+  quantidade: decimal("quantidade", { precision: 14, scale: 6 }).notNull(),
+  perdaPercentual: decimal("perdaPercentual", { precision: 7, scale: 4 }).default("0").notNull(),
+  observacao: text("observacao"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({
+  formulaComponentUnique: uniqueIndex("formula_components_formula_component_unique").on(table.formulaId, table.componenteId),
+}));
+
+export type FormulaComponent = typeof formulaComponents.$inferSelect;
+export type InsertFormulaComponent = typeof formulaComponents.$inferInsert;

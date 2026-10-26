@@ -14,6 +14,7 @@ import { analisarEstoque } from "./stock";
 import { analisarCustos } from "./costs";
 import { lookupCustomerLocation, summarizeCustomerLocations } from "./customerLocations";
 import { analisarProducaoCliente } from "./clientAnalysis";
+import { calcularConsumoTeorico } from "./formulas";
 import {
   agruparPorMes,
   agruparPorMesOrdenado,
@@ -127,6 +128,21 @@ const storageLocationInput = z.object({
   nome: z.string().trim().min(1).max(128),
   tipo: z.enum(["deposito", "setor", "localizacao"]),
 });
+const formulaComponentInput = z.object({
+  componenteId: z.number().int().positive(),
+  quantidade: z.number().positive().max(100000000),
+  perdaPercentual: z.number().min(0).max(100).default(0),
+  observacao: z.string().trim().max(1000).optional().nullable(),
+});
+const formulaInput = z.object({
+  produtoId: z.number().int().positive(),
+  rendimento: z.number().positive().max(100000000),
+  perdaPercentual: z.number().min(0).max(100).default(0),
+  vigenteDesde: z.string().datetime().optional(),
+  observacao: z.string().trim().max(1000).optional().nullable(),
+  status: z.enum(["rascunho", "ativa"]).default("rascunho"),
+  componentes: z.array(formulaComponentInput).min(1).max(100),
+});
 
 function rethrowStockMutationError(error: unknown): never {
   if (error instanceof db.StockMovementConflictError) {
@@ -141,6 +157,13 @@ function rethrowStockMutationError(error: unknown): never {
 function rethrowMasterDataError(error: unknown): never {
   if (db.isDuplicateKeyError(error)) {
     throw new TRPCError({ code: "CONFLICT", message: "Já existe um cadastro com o mesmo identificador neste usuário." });
+  }
+  throw error;
+}
+
+function rethrowFormulaError(error: unknown): never {
+  if (db.isDuplicateKeyError(error)) {
+    throw new TRPCError({ code: "CONFLICT", message: "A versão ou componente já existe nesta ficha técnica." });
   }
   throw error;
 }
@@ -406,6 +429,80 @@ export const appRouter = router({
       .input(z.object({ id: z.number().int().positive(), ativo: z.boolean() }))
       .mutation(async ({ ctx, input }) => {
         await db.updateStorageLocation(input.id, ctx.user.id, { ativo: input.ativo });
+        return { success: true };
+    }),
+  }),
+
+  formulas: router({
+    list: protectedProcedure.query(({ ctx }) => db.getProductFormulasByUser(ctx.user.id)),
+
+    calculateTheoretical: protectedProcedure
+      .input(z.object({ formulaId: z.number().int().positive(), quantidadeProduzir: z.number().positive().max(100000000) }))
+      .query(async ({ ctx, input }) => {
+        const formulas = await db.getProductFormulasByUser(ctx.user.id);
+        const formula = formulas.find(value => value.id === input.formulaId);
+        if (!formula) throw new TRPCError({ code: "NOT_FOUND", message: "Ficha técnica não encontrada." });
+        return {
+          formulaId: formula.id,
+          versao: formula.versao,
+          produtoId: formula.produtoId,
+          quantidadeProduzir: input.quantidadeProduzir,
+          componentes: calcularConsumoTeorico({
+            rendimento: Number(formula.rendimento),
+            perdaPercentual: Number(formula.perdaPercentual),
+            componentes: formula.componentes.map(component => ({
+              componenteId: component.componenteId,
+              quantidade: Number(component.quantidade),
+              perdaPercentual: Number(component.perdaPercentual),
+            })),
+          }, input.quantidadeProduzir),
+        };
+      }),
+
+    create: protectedProcedure
+      .input(formulaInput)
+      .mutation(async ({ ctx, input }) => {
+        const masterData = await db.getMasterDataByUser(ctx.user.id);
+        const product = masterData.items.find(item => item.id === input.produtoId && item.ativo);
+        if (!product) throw new TRPCError({ code: "BAD_REQUEST", message: "Produto ativo não encontrado para a ficha técnica." });
+        const componentIds = input.componentes.map(component => component.componenteId);
+        if (new Set(componentIds).size !== componentIds.length) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Cada componente deve aparecer apenas uma vez na ficha técnica." });
+        }
+        const invalidComponent = input.componentes.some(component => {
+          const item = masterData.items.find(value => value.id === component.componenteId);
+          return !item || !item.ativo || item.id === product.id;
+        });
+        if (invalidComponent) throw new TRPCError({ code: "BAD_REQUEST", message: "Todos os componentes devem ser itens ativos e diferentes do produto." });
+        try {
+          const result = await db.insertProductFormula(
+            ctx.user.id,
+            {
+              produtoId: input.produtoId,
+              status: input.status,
+              rendimento: String(input.rendimento),
+              perdaPercentual: String(input.perdaPercentual),
+              vigenteDesde: input.vigenteDesde ? new Date(input.vigenteDesde) : new Date(),
+              observacao: input.observacao ?? null,
+            },
+            input.componentes.map(component => ({
+              componenteId: component.componenteId,
+              quantidade: String(component.quantidade),
+              perdaPercentual: String(component.perdaPercentual),
+              observacao: component.observacao ?? null,
+            })),
+          );
+          return { success: true, ...result };
+        } catch (error) {
+          return rethrowFormulaError(error);
+        }
+      }),
+
+    setStatus: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), status: z.enum(["rascunho", "ativa", "inativa"]) }))
+      .mutation(async ({ ctx, input }) => {
+        const updated = await db.setProductFormulaStatus(input.id, ctx.user.id, input.status);
+        if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "Ficha técnica não encontrada." });
         return { success: true };
       }),
   }),

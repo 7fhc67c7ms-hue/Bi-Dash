@@ -29,9 +29,9 @@
 - [ ] Integrar os IDs aos movimentos de estoque, preços e insumos existentes; a integração gradual fica para os blocos estruturados seguintes.
 
 ## Bloco 4 — Fichas técnicas versionadas
-- [ ] Criar ficha técnica, versão, componentes, quantidades, unidade, rendimento e perdas técnicas.
-- [ ] Calcular consumo teórico e custo teórico sem alterar produções antigas.
-- [ ] Preservar snapshot da ficha usada por cada ordem.
+- [x] Criar ficha técnica, versão, componentes, quantidades, unidade, rendimento e perdas técnicas.
+- [x] Calcular consumo teórico sem alterar produções antigas; custo teórico automático permanece pendente até existir custo histórico por `catalogItemId`.
+- [ ] Preservar snapshot da ficha usada por cada ordem; depende do Bloco 5, pois ainda não existe ordem de produção persistida.
 
 ## Bloco 5 — PCP e ordens de produção
 - [ ] Criar plano/ordem com status, quantidades planejadas/iniciadas/produzidas/aprovadas/rejeitadas, datas e prioridade.
