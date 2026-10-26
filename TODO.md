@@ -80,3 +80,11 @@
 ## Regra de status
 
 Itens só passam para concluído com evidência de persistência, integração, testes e documentação. Interfaces sem ação real, números fixos, integrações fictícias ou módulos apenas simulados permanecem abertos.
+
+## Melhoria prioritária — fila sequencial de PDFs
+- [x] Permitir selecionar ou arrastar múltiplos PDFs de produção em uma única operação.
+- [x] Limitar a fila do navegador a no máximo 20 PDFs, mantendo o limite de 15 MB por arquivo.
+- [x] Processar estritamente um PDF por vez, aguardando a conclusão do anterior.
+- [x] Exibir status individual de cada arquivo: aguardando, processando, concluído, duplicado evitado ou erro.
+- [x] Continuar a fila após falha individual e preservar a mensagem de erro do arquivo.
+- [x] Reutilizar a idempotência existente do backend para não duplicar dados em reenvios.

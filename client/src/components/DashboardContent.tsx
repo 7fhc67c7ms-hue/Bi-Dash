@@ -358,11 +358,10 @@ export default function DashboardContent({ user }: DashboardContentProps) {
                   Entrada de dados
                 </p>
                 <h2 className="mt-1 text-lg font-semibold text-foreground">
-                  Importe um romaneio e transforme-o em análise
+                  Importe vários romaneios e transforme-os em análise
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  PDF até 15 MB · extração assistida por IA · deduplicação por
-                  ficheiro
+                  Até 20 PDFs · processamento sequencial · deduplicação por ficheiro
                 </p>
               </div>
               <Button
@@ -370,7 +369,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
                 className="shrink-0 bg-primary text-primary-foreground"
               >
                 <Upload className="mr-2 h-4 w-4" />
-                {showUploader ? "Fechar importação" : "Importar PDF"}
+                {showUploader ? "Fechar importação" : "Importar PDFs"}
               </Button>
             </CardContent>
           </Card>
