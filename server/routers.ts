@@ -232,6 +232,28 @@ function decodePdf(fileBase64: string) {
   return buffer;
 }
 
+async function atualizarMapaComDadosExtraidos(userId: number, dados: Array<{ cliente: string; cep?: string; endereco?: string; cidade?: string; uf?: string }>) {
+  const porCliente = new Map<string, { cliente: string; cep?: string; endereco?: string; cidade?: string; uf?: string }>();
+  for (const item of dados) {
+    if (!item.cep && !(item.cidade && item.uf)) continue;
+    const atual = porCliente.get(item.cliente.trim().toUpperCase());
+    if (!atual || (!atual.cep && item.cep)) porCliente.set(item.cliente.trim().toUpperCase(), item);
+  }
+  let atualizadas = 0;
+  let falhasBusca = 0;
+  for (const item of Array.from(porCliente.values())) {
+    try {
+      const location = await lookupCustomerLocation({ cep: item.cep, cidade: item.cidade, uf: item.uf });
+      await db.upsertCustomerLocationFromPdf({ userId, nome: item.cliente.trim(), cep: location.cep, endereco: item.endereco ?? null, cidade: location.cidade, uf: location.uf, estado: location.estado, codigoIbge: location.codigoIbge });
+      atualizadas++;
+    } catch {
+      // A importação da produção não falha por indisponibilidade da busca CEP/IBGE.
+      falhasBusca++;
+    }
+  }
+  return { atualizadas, falhasBusca };
+}
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -923,6 +945,7 @@ export const appRouter = router({
               duplicatesAvoided: extraction.duplicadosEvitados,
             },
           );
+          const mapa = await atualizarMapaComDadosExtraidos(ctx.user.id, extracted);
           return {
             success: true,
             duplicate: false,
@@ -930,6 +953,8 @@ export const appRouter = router({
             registrosInseridos: extracted.length,
             linhasRejeitadas: extraction.linhasRejeitadas,
             duplicadosEvitados: extraction.duplicadosEvitados,
+            clientesMapaAtualizados: mapa.atualizadas,
+            clientesMapaSemLocalizacao: mapa.falhasBusca,
             pdfUrl: url,
           };
         } catch (error) {

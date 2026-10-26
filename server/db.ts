@@ -378,6 +378,39 @@ export async function insertCustomerLocation(data: typeof customerLocations.$inf
   return Number((result as any)[0]?.insertId ?? 0);
 }
 
+export async function upsertCustomerLocationFromPdf(data: {
+  userId: number;
+  nome: string;
+  cep: string | null;
+  endereco: string | null;
+  cidade: string;
+  uf: string;
+  estado: string;
+  codigoIbge: string | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await db.select().from(customerLocations)
+    .where(and(eq(customerLocations.userId, data.userId), eq(customerLocations.nome, data.nome)))
+    .limit(1);
+  const payload = {
+    cep: data.cep,
+    endereco: data.endereco,
+    cidade: data.cidade,
+    uf: data.uf,
+    estado: data.estado,
+    codigoIbge: data.codigoIbge,
+    fonteLocalizacao: data.cep ? "cep" as const : "cidade_uf" as const,
+  };
+  if (existing[0]) {
+    await db.update(customerLocations).set(payload)
+      .where(and(eq(customerLocations.id, existing[0].id), eq(customerLocations.userId, data.userId)));
+    return { id: existing[0].id, action: "updated" as const };
+  }
+  const result = await db.insert(customerLocations).values({ ...data, ...payload });
+  return { id: Number((result as any)[0]?.insertId ?? 0), action: "created" as const };
+}
+
 export async function deleteCustomerLocation(id: number, userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

@@ -155,6 +155,7 @@ export const customerLocations = mysqlTable("customer_locations", {
   userId: int("userId").notNull().references(() => users.id),
   nome: varchar("nome", { length: 255 }).notNull(),
   cep: varchar("cep", { length: 9 }),
+  endereco: varchar("endereco", { length: 500 }),
   cidade: varchar("cidade", { length: 255 }).notNull(),
   uf: varchar("uf", { length: 2 }).notNull(),
   estado: varchar("estado", { length: 64 }).notNull(),

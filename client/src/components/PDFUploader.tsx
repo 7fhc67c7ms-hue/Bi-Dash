@@ -51,7 +51,7 @@ export default function PDFUploader({ onSuccess }: PDFUploaderProps) {
         const fileBase64 = await fileToBase64(item.file);
         const result = await uploadMutation.mutateAsync({ fileBase64, fileName: item.file.name, ano: year });
         const status: QueueStatus = result.duplicate ? "duplicado" : "concluido";
-        setQueue(current => current.map(entry => entry.id === item.id ? { ...entry, status, registros: result.registrosInseridos, message: result.duplicate ? "Nenhum registro duplicado foi criado." : `${result.registrosInseridos} registros importados.` } : entry));
+        setQueue(current => current.map(entry => entry.id === item.id ? { ...entry, status, registros: result.registrosInseridos, message: result.duplicate ? "Nenhum registro duplicado foi criado." : `${result.registrosInseridos} registros importados${result.clientesMapaAtualizados ? ` · ${result.clientesMapaAtualizados} cliente(s) atualizado(s) no mapa` : ""}.` } : entry));
         completed += 1;
       } catch (error) {
         const message = error instanceof Error ? error.message : "Erro ao processar o PDF.";

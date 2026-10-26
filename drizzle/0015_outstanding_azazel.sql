@@ -1,0 +1,1 @@
+ALTER TABLE `customer_locations` ADD `endereco` varchar(500);

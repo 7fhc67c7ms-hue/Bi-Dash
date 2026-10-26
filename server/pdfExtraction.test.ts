@@ -55,6 +55,11 @@ describe("PDF Extraction Functions", () => {
       expect(result.duplicadosEvitados).toBe(0);
     });
 
+    it("deve preservar CEP, endereço, cidade e UF encontrados no PDF", () => {
+      const result = normalizarRegistrosExtraidos([{ cliente: "CLIENTE GEO", tipoPlaca: "RET", quantidade: 1, mes: "abril", cep: "01001-000", endereco: "Praça da Sé, 1", cidade: "São Paulo", uf: "sp" }]);
+      expect(result.dados[0]).toMatchObject({ cep: "01001-000", endereco: "Praça da Sé, 1", cidade: "São Paulo", uf: "SP" });
+    });
+
     it("deve falhar quando a resposta não é um array", () => {
       expect(() => normalizarRegistrosExtraidos({ cliente: "A" })).toThrow("não é um array");
     });

@@ -88,3 +88,10 @@ Itens só passam para concluído com evidência de persistência, integração, 
 - [x] Exibir status individual de cada arquivo: aguardando, processando, concluído, duplicado evitado ou erro.
 - [x] Continuar a fila após falha individual e preservar a mensagem de erro do arquivo.
 - [x] Reutilizar a idempotência existente do backend para não duplicar dados em reenvios.
+
+## Melhoria — geolocalização durante a leitura do PDF
+- [x] Procurar CEP, endereço, cidade e UF no conteúdo extraído do PDF sem inventar campos ausentes.
+- [x] Consultar ViaCEP/BrasilAPI por CEP e usar cidade/UF com fallback IBGE quando necessário.
+- [x] Criar ou atualizar o cliente no mapa após a importação, preservando o cadastro manual existente.
+- [x] Não cancelar a importação de produção quando a consulta geográfica externa falhar.
+- [x] Informar na resposta do upload quantos clientes foram atualizados e quantos ficaram sem localização confirmada.
