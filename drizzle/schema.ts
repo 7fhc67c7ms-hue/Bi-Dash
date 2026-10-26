@@ -312,3 +312,51 @@ export const productionOrderEvents = mysqlTable("production_order_events", {
 
 export type ProductionOrderEvent = typeof productionOrderEvents.$inferSelect;
 export type InsertProductionOrderEvent = typeof productionOrderEvents.$inferInsert;
+
+export const suppliers = mysqlTable("suppliers", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  codigo: varchar("codigo", { length: 64 }).notNull(),
+  nome: varchar("nome", { length: 255 }).notNull(),
+  documento: varchar("documento", { length: 32 }),
+  contato: varchar("contato", { length: 255 }),
+  ativo: boolean("ativo").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({ userCodeUnique: uniqueIndex("suppliers_user_code_unique").on(table.userId, table.codigo) }));
+
+export type Supplier = typeof suppliers.$inferSelect;
+export type InsertSupplier = typeof suppliers.$inferInsert;
+
+export const purchaseOrders = mysqlTable("purchase_orders", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  codigo: varchar("codigo", { length: 64 }).notNull(),
+  supplierId: int("supplierId").notNull().references(() => suppliers.id),
+  status: mysqlEnum("status", ["rascunho", "solicitado", "aprovado", "parcial", "recebido", "cancelado"]).default("rascunho").notNull(),
+  observacao: text("observacao"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({ userCodeUnique: uniqueIndex("purchase_orders_user_code_unique").on(table.userId, table.codigo) }));
+
+export const purchaseOrderItems = mysqlTable("purchase_order_items", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  purchaseOrderId: int("purchaseOrderId").notNull().references(() => purchaseOrders.id),
+  itemId: int("itemId").notNull().references(() => catalogItems.id),
+  quantidadeSolicitada: decimal("quantidadeSolicitada", { precision: 14, scale: 4 }).notNull(),
+  quantidadeRecebida: decimal("quantidadeRecebida", { precision: 14, scale: 4 }).default("0").notNull(),
+  custoUnitarioCentavos: int("custoUnitarioCentavos").notNull(),
+}, table => ({ orderItemUnique: uniqueIndex("purchase_order_items_order_item_unique").on(table.purchaseOrderId, table.itemId) }));
+
+export const purchaseReceipts = mysqlTable("purchase_receipts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  purchaseOrderId: int("purchaseOrderId").notNull().references(() => purchaseOrders.id),
+  itemId: int("itemId").notNull().references(() => catalogItems.id),
+  quantidadeRecebida: decimal("quantidadeRecebida", { precision: 14, scale: 4 }).notNull(),
+  chaveIdempotencia: varchar("chaveIdempotencia", { length: 128 }).notNull(),
+  status: mysqlEnum("status", ["confirmado", "cancelado"]).default("confirmado").notNull(),
+  observacao: text("observacao"),
+  recebidoEm: timestamp("recebidoEm").defaultNow().notNull(),
+}, table => ({ receiptKeyUnique: uniqueIndex("purchase_receipts_user_key_unique").on(table.userId, table.chaveIdempotencia) }));

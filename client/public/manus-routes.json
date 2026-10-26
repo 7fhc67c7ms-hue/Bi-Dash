@@ -8,6 +8,7 @@
     { "path": "/dashboard#cobertura", "title": "Mapa de clientes" },
     { "path": "/dashboard#cadastros", "title": "Cadastros mestres" },
     { "path": "/dashboard#fichas", "title": "Fichas técnicas" },
-    { "path": "/dashboard#ordens", "title": "Ordens de produção" }
+    { "path": "/dashboard#ordens", "title": "Ordens de produção" },
+    { "path": "/dashboard#compras", "title": "Compras e recebimento" }
   ]
 }

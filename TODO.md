@@ -40,9 +40,9 @@
 - [ ] Integrar reservas/consumo/produção acabada usando eventos idempotentes; depende dos blocos de compras, qualidade e expedição.
 
 ## Bloco 6 — Compras e recebimento
-- [ ] Criar fornecedores, solicitações, cotações, pedidos, aprovações e condições.
-- [ ] Registrar recebimento parcial/integral, conferência e divergências.
-- [ ] Gerar entrada de estoque somente após recebimento confirmado.
+- [x] Criar fornecedores e pedidos com status de rascunho, solicitação e aprovação; cotações comparativas permanecem pendentes.
+- [x] Registrar recebimento parcial/integral por item com limite de quantidade e chave idempotente; conferência documental avançada permanece pendente.
+- [x] Gerar entrada de estoque somente após recebimento confirmado, na mesma transação da atualização do pedido.
 
 ## Bloco 7 — Qualidade e rastreabilidade
 - [ ] Criar plano, critérios, inspeções, amostras, resultados e aprovação/rejeição/bloqueio.

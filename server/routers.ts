@@ -163,6 +163,25 @@ const productionOrderTransitionInput = z.object({
   chaveIdempotencia: z.string().trim().min(8).max(128),
   observacao: z.string().trim().max(2000).optional().nullable(),
 });
+const supplierInput = z.object({
+  codigo: z.string().trim().min(1).max(64).regex(/^[A-Za-z0-9._-]+$/),
+  nome: z.string().trim().min(1).max(255),
+  documento: z.string().trim().max(32).optional().nullable(),
+  contato: z.string().trim().max(255).optional().nullable(),
+});
+const purchaseOrderInput = z.object({
+  codigo: z.string().trim().min(1).max(64).regex(/^[A-Za-z0-9._-]+$/),
+  supplierId: z.number().int().positive(),
+  observacao: z.string().trim().max(2000).optional().nullable(),
+  itens: z.array(z.object({ itemId: z.number().int().positive(), quantidadeSolicitada: z.number().int().positive(), custoUnitarioCentavos: z.number().int().nonnegative() })).min(1).max(100),
+});
+const purchaseReceiptInput = z.object({
+  purchaseOrderId: z.number().int().positive(),
+  itemId: z.number().int().positive(),
+  quantidadeRecebida: z.number().int().positive(),
+  chaveIdempotencia: z.string().trim().min(8).max(128),
+  observacao: z.string().trim().max(2000).optional().nullable(),
+});
 
 function rethrowStockMutationError(error: unknown): never {
   if (error instanceof db.StockMovementConflictError) {
@@ -573,6 +592,31 @@ export const appRouter = router({
       });
       if (!result.found) throw new TRPCError({ code: "NOT_FOUND", message: "Ordem de produção não encontrada." });
       return { success: true, duplicate: result.duplicate };
+    }),
+  }),
+
+  purchasing: router({
+    overview: protectedProcedure.query(({ ctx }) => db.getPurchasingDataByUser(ctx.user.id)),
+    createSupplier: protectedProcedure.input(supplierInput).mutation(async ({ ctx, input }) => {
+      try {
+        const id = await db.insertSupplier({ userId: ctx.user.id, codigo: input.codigo, nome: input.nome, documento: input.documento ?? null, contato: input.contato ?? null, ativo: true });
+        return { success: true, id };
+      } catch (error) { return rethrowMasterDataError(error); }
+    }),
+    createOrder: protectedProcedure.input(purchaseOrderInput).mutation(async ({ ctx, input }) => {
+      const master = await db.getMasterDataByUser(ctx.user.id);
+      const overview = await db.getPurchasingDataByUser(ctx.user.id);
+      if (!overview.suppliers.some(supplier => supplier.id === input.supplierId && supplier.ativo)) throw new TRPCError({ code: "BAD_REQUEST", message: "Fornecedor ativo não encontrado." });
+      if (input.itens.some(line => !master.items.some(item => item.id === line.itemId && item.ativo))) throw new TRPCError({ code: "BAD_REQUEST", message: "Todos os itens devem estar ativos no catálogo." });
+      try {
+        const id = await db.createPurchaseOrder(ctx.user.id, { codigo: input.codigo, supplierId: input.supplierId, status: "rascunho", observacao: input.observacao ?? null }, input.itens.map(line => ({ itemId: line.itemId, quantidadeSolicitada: String(line.quantidadeSolicitada), quantidadeRecebida: "0", custoUnitarioCentavos: line.custoUnitarioCentavos })));
+        return { success: true, id };
+      } catch (error) { return rethrowMasterDataError(error); }
+    }),
+    setOrderStatus: protectedProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["solicitado", "aprovado", "cancelado"]) })).mutation(async ({ ctx, input }) => { await db.setPurchaseOrderStatus(input.id, ctx.user.id, input.status); return { success: true }; }),
+    receive: protectedProcedure.input(purchaseReceiptInput).mutation(async ({ ctx, input }) => {
+      try { return { success: true, ...(await db.confirmPurchaseReceipt(ctx.user.id, { ...input, observacao: input.observacao ?? null })) }; }
+      catch (error) { if (error instanceof Error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message }); throw error; }
     }),
   }),
 

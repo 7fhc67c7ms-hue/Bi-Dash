@@ -22,6 +22,10 @@ import {
   formulaComponents,
   productionOrders,
   productionOrderEvents,
+  suppliers,
+  purchaseOrders,
+  purchaseOrderItems,
+  purchaseReceipts,
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -565,6 +569,66 @@ export async function transitionProductionOrder(
     await tx.insert(productionOrderEvents).values({ userId, orderId: id, ...data, quantidade: data.quantidade ?? null });
     await tx.update(productionOrders).set(changes).where(and(eq(productionOrders.id, id), eq(productionOrders.userId, userId)));
     return { found: true, duplicate: false };
+  });
+}
+
+export async function getPurchasingDataByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return { suppliers: [], orders: [] };
+  const [supplierRows, orders, orderItems, items] = await Promise.all([
+    db.select().from(suppliers).where(eq(suppliers.userId, userId)).orderBy(suppliers.nome),
+    db.select().from(purchaseOrders).where(eq(purchaseOrders.userId, userId)).orderBy(desc(purchaseOrders.createdAt)),
+    db.select().from(purchaseOrderItems).where(eq(purchaseOrderItems.userId, userId)),
+    db.select().from(catalogItems).where(eq(catalogItems.userId, userId)),
+  ]);
+  const supplierById = new Map(supplierRows.map(item => [item.id, item]));
+  const itemById = new Map(items.map(item => [item.id, item]));
+  return { suppliers: supplierRows, orders: orders.map(order => ({ ...order, fornecedor: supplierById.get(order.supplierId) ?? null, itens: orderItems.filter(item => item.purchaseOrderId === order.id).map(item => ({ ...item, produto: itemById.get(item.itemId) ?? null })) })) };
+}
+
+export async function insertSupplier(data: typeof suppliers.$inferInsert) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(suppliers).values(data);
+  return Number((result as any)[0]?.insertId ?? 0);
+}
+
+export async function createPurchaseOrder(userId: number, data: Omit<typeof purchaseOrders.$inferInsert, "userId">, items: Array<Omit<typeof purchaseOrderItems.$inferInsert, "userId" | "purchaseOrderId">>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.transaction(async tx => {
+    const result = await tx.insert(purchaseOrders).values({ ...data, userId });
+    const orderId = Number((result as any)[0]?.insertId ?? 0);
+    await tx.insert(purchaseOrderItems).values(items.map(item => ({ ...item, userId, purchaseOrderId: orderId })));
+    return orderId;
+  });
+}
+
+export async function setPurchaseOrderStatus(id: number, userId: number, status: "solicitado" | "aprovado" | "cancelado") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(purchaseOrders).set({ status }).where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.userId, userId)));
+}
+
+export async function confirmPurchaseReceipt(userId: number, input: { purchaseOrderId: number; itemId: number; quantidadeRecebida: number; chaveIdempotencia: string; observacao: string | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.transaction(async tx => {
+    const duplicate = await tx.select({ id: purchaseReceipts.id }).from(purchaseReceipts).where(and(eq(purchaseReceipts.userId, userId), eq(purchaseReceipts.chaveIdempotencia, input.chaveIdempotencia))).limit(1);
+    if (duplicate.length) return { duplicate: true };
+    const rows = await tx.select({ order: purchaseOrders, line: purchaseOrderItems, item: catalogItems }).from(purchaseOrderItems).innerJoin(purchaseOrders, eq(purchaseOrderItems.purchaseOrderId, purchaseOrders.id)).innerJoin(catalogItems, eq(purchaseOrderItems.itemId, catalogItems.id)).where(and(eq(purchaseOrderItems.userId, userId), eq(purchaseOrderItems.purchaseOrderId, input.purchaseOrderId), eq(purchaseOrderItems.itemId, input.itemId))).limit(1);
+    const row = rows[0];
+    if (!row) throw new Error("Item do pedido não encontrado");
+    if (!["aprovado", "parcial", "solicitado"].includes(row.order.status)) throw new Error("O pedido não está disponível para recebimento");
+    const next = Number(row.line.quantidadeRecebida) + input.quantidadeRecebida;
+    if (next > Number(row.line.quantidadeSolicitada)) throw new Error("O recebimento excede a quantidade solicitada");
+    await tx.insert(purchaseReceipts).values({ userId, purchaseOrderId: input.purchaseOrderId, itemId: input.itemId, quantidadeRecebida: String(input.quantidadeRecebida), chaveIdempotencia: input.chaveIdempotencia, observacao: input.observacao });
+    await tx.update(purchaseOrderItems).set({ quantidadeRecebida: String(next) }).where(and(eq(purchaseOrderItems.id, row.line.id), eq(purchaseOrderItems.userId, userId)));
+    await tx.insert(stockMovements).values({ userId, tipoPlaca: row.item.codigo, movimento: "entrada", quantidade: Math.round(input.quantidadeRecebida), observacao: `Recebimento ${row.order.codigo}${input.observacao ? ` · ${input.observacao}` : ""}` });
+    const allLines = await tx.select().from(purchaseOrderItems).where(and(eq(purchaseOrderItems.purchaseOrderId, input.purchaseOrderId), eq(purchaseOrderItems.userId, userId)));
+    const complete = allLines.every(line => Number(line.id === row.line.id ? next : line.quantidadeRecebida) >= Number(line.quantidadeSolicitada));
+    await tx.update(purchaseOrders).set({ status: complete ? "recebido" : "parcial" }).where(and(eq(purchaseOrders.id, input.purchaseOrderId), eq(purchaseOrders.userId, userId)));
+    return { duplicate: false };
   });
 }
 
