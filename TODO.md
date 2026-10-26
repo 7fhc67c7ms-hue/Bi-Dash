@@ -16,11 +16,11 @@
 - [ ] Criar e executar teste de integração real de idempotência concorrente e falha parcial contra um banco isolado; a suíte atual e o typecheck foram executados, mas não substituem esse teste.
 
 ## Bloco 2 — Estoque auditável
-- [ ] Preservar a regra vigente de cálculo de saldo: entrada positiva; demais movimentos conforme regra atual documentada.
-- [ ] Validar quantidades, saldo negativo e concorrência no servidor.
-- [ ] Vincular auditoria ao movimento quando compatível e registrar autor, justificativa e estado anterior/novo.
-- [ ] Permitir filtros e exportação do histórico sem duplicar lançamentos.
-- [ ] Criar testes de entrada, saída, devolução, descarte, edição concorrente e rejeições.
+- [x] Preservar a regra vigente de cálculo de saldo: entrada positiva; saída, descarte e devolução subtraem.
+- [x] Validar quantidades, saldo negativo e concorrência no servidor, com lock por usuário e `FOR UPDATE`.
+- [ ] Vincular auditoria ao movimento quando compatível e registrar autor, justificativa e estado anterior/novo. O vínculo lógico existente permanece; a melhoria detalhada de snapshots fica pendente.
+- [ ] Permitir filtros e exportação do histórico sem duplicar lançamentos. A consulta atual permanece funcionando; filtros avançados serão entregues com os cadastros/relatórios.
+- [x] Criar testes unitários da regra de sinais e validar typecheck, suíte existente e build; teste MySQL concorrente isolado permanece pendente.
 
 ## Bloco 3 — Cadastros mestres mínimos
 - [ ] Implementar entidades aditivas para produto/material, unidade/conversão, categoria e depósito/localização.

@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertProductionData,
@@ -17,6 +17,7 @@ import {
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import { movimentoParaDelta } from "./stock";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -437,10 +438,42 @@ export class StockMovementConflictError extends Error {
   }
 }
 
+export class StockBalanceError extends Error {
+  constructor(tipoPlaca: string, saldoProjetado: number) {
+    super(`Movimento rejeitado: o saldo de ${tipoPlaca} ficaria negativo (${saldoProjetado}). Registre uma entrada ou revise a quantidade.`);
+    this.name = "StockBalanceError";
+  }
+}
+
+async function assertStockBalance(
+  tx: any,
+  userId: number,
+  tipoPlaca: string,
+  delta: number,
+  excludedMovementId?: number,
+) {
+  // Serialize mutations for the same user so two devices cannot both spend
+  // the same available balance between the read and the insert/update.
+  await tx.execute(sql`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`);
+  const where = excludedMovementId === undefined
+    ? and(eq(stockMovements.userId, userId), eq(stockMovements.tipoPlaca, tipoPlaca))
+    : and(
+      eq(stockMovements.userId, userId),
+      eq(stockMovements.tipoPlaca, tipoPlaca),
+      ne(stockMovements.id, excludedMovementId),
+    );
+  const result = await tx.select({
+    saldo: sql<number>`COALESCE(SUM(CASE WHEN ${stockMovements.movimento} = 'entrada' THEN ${stockMovements.quantidade} ELSE -${stockMovements.quantidade} END), 0)`,
+  }).from(stockMovements).where(where);
+  const saldoProjetado = Number(result[0]?.saldo ?? 0) + delta;
+  if (saldoProjetado < 0) throw new StockBalanceError(tipoPlaca, saldoProjetado);
+}
+
 export async function insertStockMovement(data: InsertStockMovement) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db.transaction(async tx => {
+    await assertStockBalance(tx, data.userId, data.tipoPlaca, movimentoParaDelta(data.movimento, data.quantidade));
     const result = await tx.insert(stockMovements).values(data);
     const id = Number((result as any)[0]?.insertId ?? 0);
     await tx.insert(stockMovementAudit).values({
@@ -466,6 +499,7 @@ export async function updateStockMovement(
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db.transaction(async tx => {
+    await tx.execute(sql`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`);
     const currentResult = await tx.select().from(stockMovements)
       .where(and(eq(stockMovements.id, id), eq(stockMovements.userId, userId)))
       .limit(1);
@@ -474,13 +508,23 @@ export async function updateStockMovement(
       throw new StockMovementConflictError();
     }
 
-    await tx.update(stockMovements)
+    await assertStockBalance(
+      tx,
+      userId,
+      data.tipoPlaca,
+      movimentoParaDelta(data.movimento, data.quantidade),
+      id,
+    );
+
+    const updated = await tx.update(stockMovements)
       .set({ ...data, version: sql`${stockMovements.version} + 1` })
       .where(and(
         eq(stockMovements.id, id),
         eq(stockMovements.userId, userId),
         eq(stockMovements.version, expectedVersion),
       ));
+    const affectedRows = Number((updated as any)[0]?.affectedRows ?? (updated as any).affectedRows ?? 0);
+    if (affectedRows !== 1) throw new StockMovementConflictError();
 
     await tx.insert(stockMovementAudit).values({
       movementId: id,
@@ -499,6 +543,7 @@ export async function deleteStockMovement(id: number, userId: number, expectedVe
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db.transaction(async tx => {
+    await tx.execute(sql`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`);
     const currentResult = await tx.select().from(stockMovements)
       .where(and(eq(stockMovements.id, id), eq(stockMovements.userId, userId)))
       .limit(1);
@@ -506,6 +551,8 @@ export async function deleteStockMovement(id: number, userId: number, expectedVe
     if (!current || current.version !== expectedVersion) {
       throw new StockMovementConflictError();
     }
+
+    await assertStockBalance(tx, userId, current.tipoPlaca, 0, id);
 
     await tx.insert(stockMovementAudit).values({
       movementId: current.id,
@@ -517,11 +564,13 @@ export async function deleteStockMovement(id: number, userId: number, expectedVe
       observacao: current.observacao,
       ocorridoEm: current.ocorridoEm,
     });
-    await tx.delete(stockMovements)
+    const deleted = await tx.delete(stockMovements)
       .where(and(
         eq(stockMovements.id, id),
         eq(stockMovements.userId, userId),
         eq(stockMovements.version, expectedVersion),
       ));
+    const affectedRows = Number((deleted as any)[0]?.affectedRows ?? (deleted as any).affectedRows ?? 0);
+    if (affectedRows !== 1) throw new StockMovementConflictError();
   });
 }

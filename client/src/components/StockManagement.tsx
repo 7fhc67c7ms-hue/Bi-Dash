@@ -41,7 +41,7 @@ const movementIcon = (movement: StockMovementKind) => {
 };
 
 const isPositiveMovement = (movement: StockMovementKind) =>
-  movement === "entrada" || movement === "devolucao";
+  movement === "entrada";
 
 export default function StockManagement({
   tiposPlaca,

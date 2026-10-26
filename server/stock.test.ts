@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analisarEstoque } from "./stock";
+import { analisarEstoque, movimentoParaDelta } from "./stock";
 import { analisarProducaoCliente } from "./clientAnalysis";
 
 const production = [
@@ -16,6 +16,13 @@ const movements = [
 ] as any;
 
 describe("módulos de estoque e cliente", () => {
+  it("considera somente entrada como movimento positivo", () => {
+    expect(movimentoParaDelta("entrada", 10)).toBe(10);
+    expect(movimentoParaDelta("saida", 10)).toBe(-10);
+    expect(movimentoParaDelta("descarte", 10)).toBe(-10);
+    expect(movimentoParaDelta("devolucao", 10)).toBe(-10);
+  });
+
   it("recomenda cobertura baseada na média mensal dos romaneios", () => {
     const result = analisarEstoque(production, movements, 2);
     const item = result.itens.find(row => row.tipoPlaca === "RET 10x10")!;

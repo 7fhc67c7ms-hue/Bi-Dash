@@ -108,6 +108,16 @@ const locationLookupInput = z.object({
   uf: z.string().trim().max(2).optional().nullable(),
 });
 
+function rethrowStockMutationError(error: unknown): never {
+  if (error instanceof db.StockMovementConflictError) {
+    throw new TRPCError({ code: "CONFLICT", message: error.message });
+  }
+  if (error instanceof db.StockBalanceError) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+  }
+  throw error;
+}
+
 function decodePdf(fileBase64: string) {
   const normalized = fileBase64.replace(/^data:application\/pdf;base64,/, "");
   const buffer = Buffer.from(normalized, "base64");
@@ -439,15 +449,19 @@ export const appRouter = router({
     createStockMovement: protectedProcedure
       .input(stockMovementInput)
       .mutation(async ({ ctx, input }) => {
-        const id = await db.insertStockMovement({
-          userId: ctx.user.id,
-          tipoPlaca: input.tipoPlaca,
-          movimento: input.movimento,
-          quantidade: input.quantidade,
-          observacao: input.observacao ?? null,
-          ocorridoEm: input.ocorridoEm ? new Date(input.ocorridoEm) : new Date(),
-        });
-        return { success: true, id };
+        try {
+          const id = await db.insertStockMovement({
+            userId: ctx.user.id,
+            tipoPlaca: input.tipoPlaca,
+            movimento: input.movimento,
+            quantidade: input.quantidade,
+            observacao: input.observacao ?? null,
+            ocorridoEm: input.ocorridoEm ? new Date(input.ocorridoEm) : new Date(),
+          });
+          return { success: true, id };
+        } catch (error) {
+          return rethrowStockMutationError(error);
+        }
       }),
 
     updateStockMovement: protectedProcedure
@@ -467,10 +481,7 @@ export const appRouter = router({
           });
           return { success: true };
         } catch (error) {
-          if (error instanceof db.StockMovementConflictError) {
-            throw new TRPCError({ code: "CONFLICT", message: error.message });
-          }
-          throw error;
+          return rethrowStockMutationError(error);
         }
       }),
 
@@ -484,10 +495,7 @@ export const appRouter = router({
           await db.deleteStockMovement(input.id, ctx.user.id, input.version);
           return { success: true };
         } catch (error) {
-          if (error instanceof db.StockMovementConflictError) {
-            throw new TRPCError({ code: "CONFLICT", message: error.message });
-          }
-          throw error;
+          return rethrowStockMutationError(error);
         }
       }),
 

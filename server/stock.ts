@@ -1,4 +1,8 @@
-import type { ProductionData, StockMovement } from "../drizzle/schema";
+import type { ProductionData, StockMovement, StockMovementKind } from "../drizzle/schema";
+
+export function movimentoParaDelta(movimento: StockMovementKind, quantidade: number) {
+  return movimento === "entrada" ? quantidade : -quantidade;
+}
 
 export interface StockRecommendation {
   tipoPlaca: string;
