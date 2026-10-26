@@ -107,6 +107,26 @@ const locationLookupInput = z.object({
   cidade: z.string().trim().max(255).optional().nullable(),
   uf: z.string().trim().max(2).optional().nullable(),
 });
+const masterUnitInput = z.object({
+  codigo: z.string().trim().min(1).max(32).regex(/^[A-Za-z0-9._-]+$/),
+  nome: z.string().trim().min(1).max(64),
+  casasDecimais: z.number().int().min(0).max(6).default(0),
+});
+const masterCategoryInput = z.object({
+  nome: z.string().trim().min(1).max(128),
+});
+const catalogItemInput = z.object({
+  codigo: z.string().trim().min(1).max(64).regex(/^[A-Za-z0-9._-]+$/),
+  nome: z.string().trim().min(1).max(255),
+  tipo: z.enum(["produto_acabado", "intermediario", "em_processo", "materia_prima", "insumo", "componente", "embalagem"]),
+  unidadeId: z.number().int().positive(),
+  categoriaId: z.number().int().positive().optional().nullable(),
+  tipoPlacaLegado: z.string().trim().max(255).optional().nullable(),
+});
+const storageLocationInput = z.object({
+  nome: z.string().trim().min(1).max(128),
+  tipo: z.enum(["deposito", "setor", "localizacao"]),
+});
 
 function rethrowStockMutationError(error: unknown): never {
   if (error instanceof db.StockMovementConflictError) {
@@ -114,6 +134,13 @@ function rethrowStockMutationError(error: unknown): never {
   }
   if (error instanceof db.StockBalanceError) {
     throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+  }
+  throw error;
+}
+
+function rethrowMasterDataError(error: unknown): never {
+  if (db.isDuplicateKeyError(error)) {
+    throw new TRPCError({ code: "CONFLICT", message: "Já existe um cadastro com o mesmo identificador neste usuário." });
   }
   throw error;
 }
@@ -290,6 +317,95 @@ export const appRouter = router({
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
         await db.deleteCustomerLocation(input.id, ctx.user.id);
+        return { success: true };
+      }),
+  }),
+
+  masterData: router({
+    overview: protectedProcedure.query(({ ctx }) => db.getMasterDataByUser(ctx.user.id)),
+
+    createUnit: protectedProcedure
+      .input(masterUnitInput)
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const id = await db.insertMasterUnit({ userId: ctx.user.id, ...input, ativo: true });
+          return { success: true, id };
+        } catch (error) {
+          return rethrowMasterDataError(error);
+        }
+      }),
+
+    setUnitActive: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), ativo: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateMasterUnit(input.id, ctx.user.id, { ativo: input.ativo });
+        return { success: true };
+      }),
+
+    createCategory: protectedProcedure
+      .input(masterCategoryInput)
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const id = await db.insertMasterCategory({ userId: ctx.user.id, ...input, ativo: true });
+          return { success: true, id };
+        } catch (error) {
+          return rethrowMasterDataError(error);
+        }
+      }),
+
+    setCategoryActive: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), ativo: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateMasterCategory(input.id, ctx.user.id, { ativo: input.ativo });
+        return { success: true };
+      }),
+
+    createItem: protectedProcedure
+      .input(catalogItemInput)
+      .mutation(async ({ ctx, input }) => {
+        const masterData = await db.getMasterDataByUser(ctx.user.id);
+        const unit = masterData.units.find(item => item.id === input.unidadeId && item.ativo);
+        const category = input.categoriaId === null || input.categoriaId === undefined
+          ? undefined
+          : masterData.categories.find(item => item.id === input.categoriaId && item.ativo);
+        if (!unit) throw new TRPCError({ code: "BAD_REQUEST", message: "Unidade de medida não encontrada ou inativa." });
+        if (input.categoriaId && !category) throw new TRPCError({ code: "BAD_REQUEST", message: "Categoria não encontrada ou inativa." });
+        try {
+          const id = await db.insertCatalogItem({
+            userId: ctx.user.id,
+            ...input,
+            categoriaId: input.categoriaId ?? null,
+            tipoPlacaLegado: input.tipoPlacaLegado ?? null,
+            ativo: true,
+          });
+          return { success: true, id };
+        } catch (error) {
+          return rethrowMasterDataError(error);
+        }
+      }),
+
+    setItemActive: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), ativo: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateCatalogItem(input.id, ctx.user.id, { ativo: input.ativo });
+        return { success: true };
+      }),
+
+    createLocation: protectedProcedure
+      .input(storageLocationInput)
+      .mutation(async ({ ctx, input }) => {
+        try {
+          const id = await db.insertStorageLocation({ userId: ctx.user.id, ...input, ativo: true });
+          return { success: true, id };
+        } catch (error) {
+          return rethrowMasterDataError(error);
+        }
+      }),
+
+    setLocationActive: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), ativo: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateStorageLocation(input.id, ctx.user.id, { ativo: input.ativo });
         return { success: true };
       }),
   }),

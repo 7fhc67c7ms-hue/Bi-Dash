@@ -38,6 +38,7 @@ import CostsManagement from "./CostsManagement";
 import CustomerCoverage from "./CustomerCoverage";
 import ClientProductionAnalysis from "./ClientProductionAnalysis";
 import ProductionAssistant from "./ProductionAssistant";
+import MasterDataManagement from "./MasterDataManagement";
 
 interface DashboardContentProps {
   user: User | null;
@@ -69,13 +70,14 @@ export default function DashboardContent({ user }: DashboardContentProps) {
     incluirDetalhesClientes: true,
     incluirComparacao: true,
   });
-  const [activeModule, setActiveModule] = useState<"PRODUCAO" | "ESTOQUE" | "CLIENTE" | "CUSTOS" | "COBERTURA">("PRODUCAO");
+  const [activeModule, setActiveModule] = useState<"PRODUCAO" | "ESTOQUE" | "CLIENTE" | "CUSTOS" | "COBERTURA" | "CADASTROS">("PRODUCAO");
 
   useEffect(() => {
     const navigateModule = (event: Event) => {
       const destination = (event as CustomEvent<string>).detail;
       if (destination === "custos") setActiveModule("CUSTOS");
       if (destination === "cobertura") setActiveModule("COBERTURA");
+      if (destination === "cadastros") setActiveModule("CADASTROS");
     };
     window.addEventListener("bi:navigate", navigateModule);
     return () => window.removeEventListener("bi:navigate", navigateModule);
@@ -495,6 +497,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
           <Button variant={activeModule === "CLIENTE" ? "default" : "ghost"} onClick={() => setActiveModule("CLIENTE")}>Análise por cliente</Button>
           <Button variant={activeModule === "CUSTOS" ? "default" : "ghost"} onClick={() => setActiveModule("CUSTOS")}>Preços e custos</Button>
           <Button variant={activeModule === "COBERTURA" ? "default" : "ghost"} onClick={() => setActiveModule("COBERTURA")}>Mapa de clientes</Button>
+          <Button variant={activeModule === "CADASTROS" ? "default" : "ghost"} onClick={() => setActiveModule("CADASTROS")}>Cadastros mestres</Button>
         </div>
 
         {analyticsQuery.isLoading ? (
@@ -521,7 +524,9 @@ export default function DashboardContent({ user }: DashboardContentProps) {
             </CardContent>
           </Card>
         ) : analyticsData ? (
-          activeModule === "ESTOQUE" ? (
+          activeModule === "CADASTROS" ? (
+            <MasterDataManagement />
+          ) : activeModule === "ESTOQUE" ? (
             <StockManagement tiposPlaca={analyticsData.tiposPlaca} />
           ) : activeModule === "CUSTOS" ? (
             <div id="custos" className="scroll-mt-6"><CostsManagement tiposPlaca={analyticsData.tiposPlaca} /></div>

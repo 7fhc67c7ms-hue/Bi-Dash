@@ -23,10 +23,10 @@
 - [x] Criar testes unitários da regra de sinais e validar typecheck, suíte existente e build; teste MySQL concorrente isolado permanece pendente.
 
 ## Bloco 3 — Cadastros mestres mínimos
-- [ ] Implementar entidades aditivas para produto/material, unidade/conversão, categoria e depósito/localização.
-- [ ] Preservar `tipoPlaca` e dados históricos, adicionando vínculos progressivos sem migração destrutiva.
-- [ ] Validar identificadores e duplicidades no backend.
-- [ ] Integrar os cadastros ao estoque, preços e insumos existentes.
+- [x] Implementar entidades aditivas para produto/material, unidade, categoria e depósito/localização.
+- [x] Preservar `tipoPlaca` e dados históricos, adicionando campo ponte `tipoPlacaLegado` sem migração destrutiva.
+- [x] Validar identificadores, relacionamentos de unidade/categoria e duplicidades no backend.
+- [ ] Integrar os IDs aos movimentos de estoque, preços e insumos existentes; a integração gradual fica para os blocos estruturados seguintes.
 
 ## Bloco 4 — Fichas técnicas versionadas
 - [ ] Criar ficha técnica, versão, componentes, quantidades, unidade, rendimento e perdas técnicas.

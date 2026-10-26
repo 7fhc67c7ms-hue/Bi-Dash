@@ -5,6 +5,7 @@
     { "path": "/404", "title": "Página não encontrada" },
     { "path": "/dashboard#assistente", "title": "Assistente do BI" },
     { "path": "/dashboard#custos", "title": "Preços e custos" },
-    { "path": "/dashboard#cobertura", "title": "Mapa de clientes" }
+    { "path": "/dashboard#cobertura", "title": "Mapa de clientes" },
+    { "path": "/dashboard#cadastros", "title": "Cadastros mestres" }
   ]
 }

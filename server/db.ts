@@ -14,6 +14,10 @@ import {
   supplies,
   supplyConsumptions,
   customerLocations,
+  masterUnits,
+  masterCategories,
+  catalogItems,
+  storageLocations,
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -121,7 +125,7 @@ export async function getProductionUploadByHash(userId: number, fileHash: string
   return result[0];
 }
 
-function isDuplicateKeyError(error: unknown) {
+export function isDuplicateKeyError(error: unknown) {
   const candidate = error as { code?: unknown; errno?: unknown };
   return candidate.code === "ER_DUP_ENTRY" || candidate.errno === 1062;
 }
@@ -368,6 +372,70 @@ export async function deleteCustomerLocation(id: number, userId: number) {
   if (!db) throw new Error("Database not available");
   return db.delete(customerLocations)
     .where(and(eq(customerLocations.id, id), eq(customerLocations.userId, userId)));
+}
+
+export async function getMasterDataByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return { units: [], categories: [], items: [], locations: [] };
+  const [units, categories, items, locations] = await Promise.all([
+    db.select().from(masterUnits).where(eq(masterUnits.userId, userId)).orderBy(masterUnits.codigo),
+    db.select().from(masterCategories).where(eq(masterCategories.userId, userId)).orderBy(masterCategories.nome),
+    db.select().from(catalogItems).where(eq(catalogItems.userId, userId)).orderBy(catalogItems.nome),
+    db.select().from(storageLocations).where(eq(storageLocations.userId, userId)).orderBy(storageLocations.tipo, storageLocations.nome),
+  ]);
+  return { units, categories, items, locations };
+}
+
+export async function insertMasterUnit(data: typeof masterUnits.$inferInsert) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(masterUnits).values(data);
+  return Number((result as any)[0]?.insertId ?? 0);
+}
+
+export async function updateMasterUnit(id: number, userId: number, data: Partial<Pick<typeof masterUnits.$inferInsert, "codigo" | "nome" | "casasDecimais" | "ativo">>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(masterUnits).set(data).where(and(eq(masterUnits.id, id), eq(masterUnits.userId, userId)));
+}
+
+export async function insertMasterCategory(data: typeof masterCategories.$inferInsert) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(masterCategories).values(data);
+  return Number((result as any)[0]?.insertId ?? 0);
+}
+
+export async function updateMasterCategory(id: number, userId: number, data: Partial<Pick<typeof masterCategories.$inferInsert, "nome" | "ativo">>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(masterCategories).set(data).where(and(eq(masterCategories.id, id), eq(masterCategories.userId, userId)));
+}
+
+export async function insertCatalogItem(data: typeof catalogItems.$inferInsert) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(catalogItems).values(data);
+  return Number((result as any)[0]?.insertId ?? 0);
+}
+
+export async function updateCatalogItem(id: number, userId: number, data: Partial<Pick<typeof catalogItems.$inferInsert, "codigo" | "nome" | "tipo" | "unidadeId" | "categoriaId" | "tipoPlacaLegado" | "ativo">>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(catalogItems).set(data).where(and(eq(catalogItems.id, id), eq(catalogItems.userId, userId)));
+}
+
+export async function insertStorageLocation(data: typeof storageLocations.$inferInsert) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(storageLocations).values(data);
+  return Number((result as any)[0]?.insertId ?? 0);
+}
+
+export async function updateStorageLocation(id: number, userId: number, data: Partial<Pick<typeof storageLocations.$inferInsert, "nome" | "tipo" | "ativo">>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(storageLocations).set(data).where(and(eq(storageLocations.id, id), eq(storageLocations.userId, userId)));
 }
 
 export async function insertManyProductionData(data: InsertProductionData[]) {

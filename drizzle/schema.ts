@@ -166,3 +166,69 @@ export const customerLocations = mysqlTable("customer_locations", {
 
 export type CustomerLocation = typeof customerLocations.$inferSelect;
 export type InsertCustomerLocation = typeof customerLocations.$inferInsert;
+
+/** Unidade de medida controlada por usuário, com precisão explícita. */
+export const masterUnits = mysqlTable("master_units", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  codigo: varchar("codigo", { length: 32 }).notNull(),
+  nome: varchar("nome", { length: 64 }).notNull(),
+  casasDecimais: int("casasDecimais").default(0).notNull(),
+  ativo: boolean("ativo").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({
+  userCodeUnique: uniqueIndex("master_units_user_code_unique").on(table.userId, table.codigo),
+}));
+
+export type MasterUnit = typeof masterUnits.$inferSelect;
+export type InsertMasterUnit = typeof masterUnits.$inferInsert;
+
+/** Categorias/famílias usadas para organizar itens sem duplicar o cadastro textual legado. */
+export const masterCategories = mysqlTable("master_categories", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  nome: varchar("nome", { length: 128 }).notNull(),
+  ativo: boolean("ativo").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({
+  userNameUnique: uniqueIndex("master_categories_user_name_unique").on(table.userId, table.nome),
+}));
+
+export type MasterCategory = typeof masterCategories.$inferSelect;
+export type InsertMasterCategory = typeof masterCategories.$inferInsert;
+
+export const catalogItems = mysqlTable("catalog_items", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  codigo: varchar("codigo", { length: 64 }).notNull(),
+  nome: varchar("nome", { length: 255 }).notNull(),
+  tipo: mysqlEnum("tipo", ["produto_acabado", "intermediario", "em_processo", "materia_prima", "insumo", "componente", "embalagem"]).notNull(),
+  unidadeId: int("unidadeId").notNull().references(() => masterUnits.id),
+  categoriaId: int("categoriaId").references(() => masterCategories.id),
+  tipoPlacaLegado: varchar("tipoPlacaLegado", { length: 255 }),
+  ativo: boolean("ativo").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({
+  userCodeUnique: uniqueIndex("catalog_items_user_code_unique").on(table.userId, table.codigo),
+}));
+
+export type CatalogItem = typeof catalogItems.$inferSelect;
+export type InsertCatalogItem = typeof catalogItems.$inferInsert;
+
+export const storageLocations = mysqlTable("storage_locations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  nome: varchar("nome", { length: 128 }).notNull(),
+  tipo: mysqlEnum("tipo", ["deposito", "setor", "localizacao"]).notNull(),
+  ativo: boolean("ativo").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({
+  userNameTypeUnique: uniqueIndex("storage_locations_user_name_type_unique").on(table.userId, table.nome, table.tipo),
+}));
+
+export type StorageLocation = typeof storageLocations.$inferSelect;
+export type InsertStorageLocation = typeof storageLocations.$inferInsert;
