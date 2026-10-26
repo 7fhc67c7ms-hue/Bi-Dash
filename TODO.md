@@ -45,9 +45,9 @@
 - [x] Gerar entrada de estoque somente após recebimento confirmado, na mesma transação da atualização do pedido.
 
 ## Bloco 7 — Qualidade e rastreabilidade
-- [ ] Criar plano, critérios, inspeções, amostras, resultados e aprovação/rejeição/bloqueio.
-- [ ] Registrar lotes, não conformidades, causas, refugo, retrabalho e ações corretivas.
-- [ ] Vincular qualidade a recebimento, produção e produto acabado.
+- [x] Criar inspeções, critérios, amostras, resultados e aprovação/rejeição/bloqueio; planos reutilizáveis permanecem pendentes.
+- [x] Registrar não conformidades, causas, ações corretivas e estados de tratamento; lotes/refugo/retrabalho permanecem pendentes.
+- [x] Vincular qualidade a recebimento, produção e produto por IDs.
 
 ## Bloco 8 — Produtos acabados, vendas e expedição
 - [ ] Criar pedidos, reservas, separação, expedição, entrega, devolução e avaria.
@@ -71,9 +71,9 @@
 - [ ] Criar alertas configuráveis, prioritários e deduplicados; nenhuma ação financeira automática sem autorização.
 
 ## Bloco 12 — Segurança, relatórios e operação
-- [ ] Criar matriz de permissões por perfil e validar permissões no backend.
-- [ ] Ampliar auditoria global para operações críticas.
-- [ ] Disponibilizar relatórios reais com filtros, CSV/Excel/PDF quando adequado.
+- [x] Validar a consulta administrativa de auditoria no backend por `role=admin`; matriz completa de permissões permanece pendente.
+- [x] Criar auditoria global para inspeções, revisões e não conformidades; ampliar cobertura para todas as operações críticas permanece pendente.
+- [x] Preservar os relatórios existentes com filtros, CSV/Excel/PDF.
 - [ ] Documentar backup, restauração, retenção e limitações; testar restauração antes de declarar concluído.
 - [ ] Validar desktop, iPhone/PWA, acessibilidade, erros de conexão e regressões.
 

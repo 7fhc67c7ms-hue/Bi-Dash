@@ -360,3 +360,38 @@ export const purchaseReceipts = mysqlTable("purchase_receipts", {
   observacao: text("observacao"),
   recebidoEm: timestamp("recebidoEm").defaultNow().notNull(),
 }, table => ({ receiptKeyUnique: uniqueIndex("purchase_receipts_user_key_unique").on(table.userId, table.chaveIdempotencia) }));
+
+export const qualityInspections = mysqlTable("quality_inspections", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  productionOrderId: int("productionOrderId").references(() => productionOrders.id),
+  purchaseReceiptId: int("purchaseReceiptId").references(() => purchaseReceipts.id),
+  itemId: int("itemId").notNull().references(() => catalogItems.id),
+  status: mysqlEnum("status", ["aberta", "aprovada", "reprovada", "bloqueada"]).default("aberta").notNull(),
+  criterio: text("criterio").notNull(),
+  resultado: text("resultado"),
+  quantidadeAmostra: decimal("quantidadeAmostra", { precision: 14, scale: 4 }),
+  inspecionadaEm: timestamp("inspecionadaEm").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const qualityNonConformities = mysqlTable("quality_non_conformities", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  inspectionId: int("inspectionId").notNull().references(() => qualityInspections.id),
+  codigo: varchar("codigo", { length: 64 }).notNull(),
+  causa: text("causa"),
+  acaoCorretiva: text("acaoCorretiva"),
+  status: mysqlEnum("status", ["aberta", "em_tratamento", "encerrada"]).default("aberta").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const auditEvents = mysqlTable("audit_events", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  acao: varchar("acao", { length: 96 }).notNull(),
+  entidade: varchar("entidade", { length: 96 }).notNull(),
+  entidadeId: int("entidadeId"),
+  dados: text("dados"),
+  ocorridoEm: timestamp("ocorridoEm").defaultNow().notNull(),
+});

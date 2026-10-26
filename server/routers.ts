@@ -182,6 +182,19 @@ const purchaseReceiptInput = z.object({
   chaveIdempotencia: z.string().trim().min(8).max(128),
   observacao: z.string().trim().max(2000).optional().nullable(),
 });
+const qualityInspectionInput = z.object({
+  productionOrderId: z.number().int().positive().optional().nullable(),
+  purchaseReceiptId: z.number().int().positive().optional().nullable(),
+  itemId: z.number().int().positive(),
+  criterio: z.string().trim().min(1).max(2000),
+  quantidadeAmostra: z.number().positive().optional().nullable(),
+});
+const nonConformityInput = z.object({
+  inspectionId: z.number().int().positive(),
+  codigo: z.string().trim().min(1).max(64),
+  causa: z.string().trim().max(2000).optional().nullable(),
+  acaoCorretiva: z.string().trim().max(2000).optional().nullable(),
+});
 
 function rethrowStockMutationError(error: unknown): never {
   if (error instanceof db.StockMovementConflictError) {
@@ -618,6 +631,24 @@ export const appRouter = router({
       try { return { success: true, ...(await db.confirmPurchaseReceipt(ctx.user.id, { ...input, observacao: input.observacao ?? null })) }; }
       catch (error) { if (error instanceof Error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message }); throw error; }
     }),
+  }),
+
+  quality: router({
+    overview: protectedProcedure.query(({ ctx }) => db.listQualityByUser(ctx.user.id)),
+    createInspection: protectedProcedure.input(qualityInspectionInput).mutation(async ({ ctx, input }) => {
+      const master = await db.getMasterDataByUser(ctx.user.id);
+      if (!master.items.some(item => item.id === input.itemId && item.ativo)) throw new TRPCError({ code: "BAD_REQUEST", message: "Item ativo não encontrado." });
+      const id = await db.createQualityInspection({ userId: ctx.user.id, productionOrderId: input.productionOrderId ?? null, purchaseReceiptId: input.purchaseReceiptId ?? null, itemId: input.itemId, status: "aberta", criterio: input.criterio, resultado: null, quantidadeAmostra: input.quantidadeAmostra ? String(input.quantidadeAmostra) : null });
+      await db.createAuditEvent({ userId: ctx.user.id, acao: "create", entidade: "quality_inspection", entidadeId: id, dados: JSON.stringify({ itemId: input.itemId }) });
+      return { success: true, id };
+    }),
+    reviewInspection: protectedProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["aberta", "aprovada", "reprovada", "bloqueada"]), resultado: z.string().trim().max(2000).optional().nullable() })).mutation(async ({ ctx, input }) => { await db.updateQualityInspection(input.id, ctx.user.id, input.status, input.resultado ?? null); await db.createAuditEvent({ userId: ctx.user.id, acao: "review", entidade: "quality_inspection", entidadeId: input.id, dados: JSON.stringify(input) }); return { success: true }; }),
+    createNonConformity: protectedProcedure.input(nonConformityInput).mutation(async ({ ctx, input }) => { const id = await db.createNonConformity({ userId: ctx.user.id, inspectionId: input.inspectionId, codigo: input.codigo, causa: input.causa ?? null, acaoCorretiva: input.acaoCorretiva ?? null, status: "aberta" }); await db.createAuditEvent({ userId: ctx.user.id, acao: "create", entidade: "quality_non_conformity", entidadeId: id, dados: JSON.stringify({ inspectionId: input.inspectionId }) }); return { success: true, id }; }),
+  }),
+
+  audit: router({
+    mine: protectedProcedure.query(({ ctx }) => db.listQualityByUser(ctx.user.id).then(result => result.audit)),
+    admin: protectedProcedure.query(({ ctx }) => { if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Apenas administradores podem consultar a auditoria global." }); return db.listQualityByUser(ctx.user.id).then(result => result.audit); }),
   }),
 
   production: router({

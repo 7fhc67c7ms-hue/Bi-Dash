@@ -26,6 +26,9 @@ import {
   purchaseOrders,
   purchaseOrderItems,
   purchaseReceipts,
+  qualityInspections,
+  qualityNonConformities,
+  auditEvents,
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -630,6 +633,37 @@ export async function confirmPurchaseReceipt(userId: number, input: { purchaseOr
     await tx.update(purchaseOrders).set({ status: complete ? "recebido" : "parcial" }).where(and(eq(purchaseOrders.id, input.purchaseOrderId), eq(purchaseOrders.userId, userId)));
     return { duplicate: false };
   });
+}
+
+export async function listQualityByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return { inspections: [], nonConformities: [], audit: [] };
+  const [inspections, nonConformities, audit] = await Promise.all([
+    db.select().from(qualityInspections).where(eq(qualityInspections.userId, userId)).orderBy(desc(qualityInspections.inspecionadaEm)),
+    db.select().from(qualityNonConformities).where(eq(qualityNonConformities.userId, userId)).orderBy(desc(qualityNonConformities.createdAt)),
+    db.select().from(auditEvents).where(eq(auditEvents.userId, userId)).orderBy(desc(auditEvents.ocorridoEm)).limit(200),
+  ]);
+  return { inspections, nonConformities, audit };
+}
+
+export async function createQualityInspection(data: typeof qualityInspections.$inferInsert) {
+  const db = await getDb(); if (!db) throw new Error("Database not available");
+  const result = await db.insert(qualityInspections).values(data); return Number((result as any)[0]?.insertId ?? 0);
+}
+
+export async function updateQualityInspection(id: number, userId: number, status: "aberta" | "aprovada" | "reprovada" | "bloqueada", resultado: string | null) {
+  const db = await getDb(); if (!db) throw new Error("Database not available");
+  return db.update(qualityInspections).set({ status, resultado }).where(and(eq(qualityInspections.id, id), eq(qualityInspections.userId, userId)));
+}
+
+export async function createNonConformity(data: typeof qualityNonConformities.$inferInsert) {
+  const db = await getDb(); if (!db) throw new Error("Database not available");
+  const result = await db.insert(qualityNonConformities).values(data); return Number((result as any)[0]?.insertId ?? 0);
+}
+
+export async function createAuditEvent(data: typeof auditEvents.$inferInsert) {
+  const db = await getDb(); if (!db) return;
+  await db.insert(auditEvents).values(data);
 }
 
 export async function insertManyProductionData(data: InsertProductionData[]) {
