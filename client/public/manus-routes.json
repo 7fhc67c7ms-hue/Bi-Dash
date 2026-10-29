@@ -1,0 +1,7 @@
+{
+  "routes": [
+    { "path": "/", "title": "BI Produção — Fotoporcelana" },
+    { "path": "/dashboard", "title": "Dashboard de produção" },
+    { "path": "/404", "title": "Não encontrado" }
+  ]
+}
