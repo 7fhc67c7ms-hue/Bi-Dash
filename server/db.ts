@@ -290,6 +290,15 @@ export async function deleteProductionDataByUpload(uploadId: number, userId: num
     .where(and(eq(productionData.uploadId, uploadId), eq(productionData.userId, userId)));
 }
 
+export async function deleteProductionUploadCascade(uploadId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.transaction(async tx => {
+    await tx.delete(productionData).where(and(eq(productionData.uploadId, uploadId), eq(productionData.userId, userId)));
+    return tx.delete(productionUploads).where(and(eq(productionUploads.id, uploadId), eq(productionUploads.userId, userId)));
+  });
+}
+
 export async function getProductPricesByUser(userId: number) {
   const db = await getDb();
   if (!db) return [];
@@ -303,6 +312,12 @@ export async function insertProductPrice(data: typeof productPrices.$inferInsert
   if (!db) throw new Error("Database not available");
   const result = await db.insert(productPrices).values(data);
   return Number((result as any)[0]?.insertId ?? 0);
+}
+
+export async function deleteProductPrice(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(productPrices).where(and(eq(productPrices.id, id), eq(productPrices.userId, userId)));
 }
 
 export async function getSuppliesByUser(userId: number) {
@@ -325,6 +340,15 @@ export async function updateSupply(id: number, userId: number, data: Partial<Pic
   if (!db) throw new Error("Database not available");
   return db.update(supplies).set(data)
     .where(and(eq(supplies.id, id), eq(supplies.userId, userId)));
+}
+
+export async function deleteSupply(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.transaction(async tx => {
+    await tx.delete(supplyConsumptions).where(and(eq(supplyConsumptions.supplyId, id), eq(supplyConsumptions.userId, userId)));
+    return tx.delete(supplies).where(and(eq(supplies.id, id), eq(supplies.userId, userId)));
+  });
 }
 
 export async function getSupplyConsumptionsByUser(userId: number) {

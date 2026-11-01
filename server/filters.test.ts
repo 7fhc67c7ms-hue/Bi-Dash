@@ -39,6 +39,17 @@ describe("Production filters", () => {
     const withMoreObras = [...rows, { ...rows[0], id: 4, cliente: "Construtora obras especiais" }];
     expect(filterProductionData(withMoreObras, { selectedClients: ["BETA OBRAS", "Construtora obras especiais"], clientFilterMode: "EXCLUIR" }).map((row) => row.cliente)).toEqual(["ALFA", "ALFA"]);
   });
+  it("unifica CEPAG, AFAGU, ALAMEDA e PAZ ETERNA como ANJO DA GUARDA", () => {
+    const grouped = filterProductionData([
+      ...rows,
+      { ...rows[0], id: 4, cliente: "CEPAG CENTRAL" },
+      { ...rows[0], id: 5, cliente: "AFAGU FILIAL" },
+      { ...rows[0], id: 6, cliente: "ALAMEDA" },
+      { ...rows[0], id: 7, cliente: "PAZ ETERNA" },
+    ], { anjoDaGuarda: true });
+    expect(grouped.filter(row => row.cliente === "ANJO DA GUARDA")).toHaveLength(4);
+    expect(grouped.find(row => row.cliente === "CEPAG CENTRAL")).toBeUndefined();
+  });
   it("não considera registros de outro utilizador como próprios", () => {
     expect(rows.filter((row) => isOwnedByUser(row, 7))).toHaveLength(2);
     expect(isOwnedByUser(rows[2], 7)).toBe(false);

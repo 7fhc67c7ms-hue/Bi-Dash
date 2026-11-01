@@ -1,5 +1,5 @@
 import type { ProductionData } from "../drizzle/schema";
-import { matchesClientFilter, type ClientFilterMode } from "@shared/clientFilters";
+import { canonicalizeClient, matchesClientFilter, type ClientFilterMode } from "@shared/clientFilters";
 
 export type ProductionFilters = {
   cliente?: string;
@@ -11,6 +11,7 @@ export type ProductionFilters = {
   tiposPlaca?: readonly string[];
   years?: readonly number[];
   categoria?: "TODOS" | "OBRAS" | "COMUNS";
+  anjoDaGuarda?: boolean;
 };
 
 export function filterProductionData(
@@ -22,10 +23,13 @@ export function filterProductionData(
     input.modoClientes ?? input.clientFilterMode ?? "INCLUIR";
   const selectedTypes = input.tiposPlaca ?? [];
   const selectedYears = input.years ?? [];
-  return data.filter(item => {
+  return data.map(item => ({
+    ...item,
+    cliente: canonicalizeClient(item.cliente, input.anjoDaGuarda),
+  })).filter(item => {
     const clientMatches = input.cliente
-      ? item.cliente === input.cliente
-      : matchesClientFilter(item.cliente, selectedClients, clientFilterMode);
+      ? item.cliente === canonicalizeClient(input.cliente, input.anjoDaGuarda)
+      : matchesClientFilter(item.cliente, selectedClients.map(client => canonicalizeClient(client, input.anjoDaGuarda)), clientFilterMode);
     const plateMatches = input.tipoPlaca
       ? item.tipoPlaca === input.tipoPlaca
       : selectedTypes.length === 0 || selectedTypes.includes(item.tipoPlaca);

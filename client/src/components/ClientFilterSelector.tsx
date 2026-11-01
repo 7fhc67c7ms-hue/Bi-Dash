@@ -11,6 +11,8 @@ interface ClientFilterSelectorProps {
   mode: ClientFilterMode;
   onSelectedClientsChange: (clients: string[]) => void;
   onModeChange: (mode: ClientFilterMode) => void;
+  anjoDaGuarda: boolean;
+  onAnjoDaGuardaChange: (enabled: boolean) => void;
 }
 
 type Shortcut = "TODOS" | "OBRAS" | "SEM_OBRAS" | "PERSONALIZADA";
@@ -27,6 +29,8 @@ export default function ClientFilterSelector({
   mode,
   onSelectedClientsChange,
   onModeChange,
+  anjoDaGuarda,
+  onAnjoDaGuardaChange,
 }: ClientFilterSelectorProps) {
   const obrasClients = useMemo(() => clients.filter(isObrasClient), [clients]);
   const shortcut: Shortcut =
@@ -69,6 +73,9 @@ export default function ClientFilterSelector({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2" aria-label="Atalhos de clientes">
+          <Button type="button" size="sm" variant={anjoDaGuarda ? "default" : "outline"} onClick={() => { onAnjoDaGuardaChange(!anjoDaGuarda); onSelectedClientsChange([]); }} aria-pressed={anjoDaGuarda}>
+            ANJO DA GUARDA
+          </Button>
           <Button
             type="button"
             size="sm"
@@ -141,7 +148,9 @@ export default function ClientFilterSelector({
           </fieldset>
         </div>
         <p className="text-xs text-muted-foreground">
-          {shortcut === "TODOS"
+          {anjoDaGuarda
+            ? "CEPAG, AFAGU, ALAMEDA e PAZ ETERNA são analisados como ANJO DA GUARDA."
+            : shortcut === "TODOS"
             ? "Todos os clientes estão incluídos."
             : shortcut === "OBRAS"
               ? "Apenas clientes cujo nome contém OBRAS estão incluídos."

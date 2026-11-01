@@ -13,6 +13,7 @@ import {
   Database,
   History,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import PDFUploader from "./PDFUploader";
@@ -56,6 +57,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
   const [selectedClients, setSelectedClients] = useState<string[]>([]);
   const [clientFilterMode, setClientFilterMode] =
     useState<ClientFilterMode>("INCLUIR");
+  const [anjoDaGuarda, setAnjoDaGuarda] = useState(false);
   const [selectedPlate, setSelectedPlate] = useState("");
   const [selectedPlates, setSelectedPlates] = useState<string[]>([]);
   const [category, setCategory] = useState<"TODOS" | "OBRAS" | "COMUNS">(
@@ -98,6 +100,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
       tipoPlaca: selectedPlates.length === 0 ? selectedPlate || undefined : undefined,
       tiposPlaca: selectedPlates.length > 0 ? selectedPlates : undefined,
       categoria: category,
+      anjoDaGuarda,
       periodoA,
       periodoB,
     }),
@@ -109,6 +112,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
       selectedPlate,
       selectedPlates,
       category,
+      anjoDaGuarda,
       periodoA,
       periodoB,
     ]
@@ -121,6 +125,13 @@ export default function DashboardContent({ user }: DashboardContentProps) {
   });
   const utils = trpc.useUtils();
   const logoutMutation = trpc.auth.logout.useMutation();
+  const deleteUploadMutation = trpc.production.deleteUpload.useMutation({
+    onSuccess: () => {
+      invalidateDashboard();
+      toast.success("PDF e todos os dados importados dele foram excluídos.");
+    },
+    onError: error => toast.error(error.message),
+  });
 
   const invalidateDashboard = () => {
     void utils.production.getAnalytics.invalidate();
@@ -138,6 +149,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
     setSelectedYears([]);
     setSelectedClients([]);
     setClientFilterMode("INCLUIR");
+    setAnjoDaGuarda(false);
     setSelectedPlate("");
     setSelectedPlates([]);
     setCategory("TODOS");
@@ -423,11 +435,13 @@ export default function DashboardContent({ user }: DashboardContentProps) {
           />
           <ClientFilterSelector
             clients={analyticsData?.clientes ?? []}
-            selectedClients={selectedClients}
-            mode={clientFilterMode}
-            onSelectedClientsChange={setSelectedClients}
-            onModeChange={setClientFilterMode}
-          />
+                  selectedClients={selectedClients}
+                  mode={clientFilterMode}
+                  onSelectedClientsChange={setSelectedClients}
+                  onModeChange={setClientFilterMode}
+                  anjoDaGuarda={anjoDaGuarda}
+                  onAnjoDaGuardaChange={setAnjoDaGuarda}
+                />
           <Card className="border-border/70 bg-card/80 shadow-lg">
             <CardContent className="space-y-4 p-4">
               <div className="grid gap-3 md:grid-cols-3">
@@ -672,15 +686,33 @@ export default function DashboardContent({ user }: DashboardContentProps) {
                               {upload.duplicatesAvoided} duplicados evitados
                             </p>
                           </div>
-                          <span
-                            className={`w-fit rounded-full px-2 py-1 text-xs ${upload.status === "completed" ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : upload.status === "failed" ? "bg-destructive/15 text-destructive" : "bg-amber-500/15 text-amber-700 dark:text-amber-300"}`}
-                          >
-                            {upload.status === "completed"
-                              ? "Concluído"
-                              : upload.status === "failed"
-                                ? "Falhou"
-                                : "A processar"}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`w-fit rounded-full px-2 py-1 text-xs ${upload.status === "completed" ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : upload.status === "failed" ? "bg-destructive/15 text-destructive" : "bg-amber-500/15 text-amber-700 dark:text-amber-300"}`}
+                            >
+                              {upload.status === "completed"
+                                ? "Concluído"
+                                : upload.status === "failed"
+                                  ? "Falhou"
+                                  : "A processar"}
+                            </span>
+                            <Button
+                              data-print-ui
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              disabled={deleteUploadMutation.isPending}
+                              onClick={() => {
+                                if (window.confirm(`Excluir o PDF "${upload.fileName}" e todos os dados importados dele? Essa ação não pode ser desfeita.`)) {
+                                  deleteUploadMutation.mutate({ id: upload.id });
+                                }
+                              }}
+                              aria-label={`Excluir PDF ${upload.fileName}`}
+                              title="Excluir PDF e dados importados"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>

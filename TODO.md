@@ -95,3 +95,10 @@ Itens só passam para concluído com evidência de persistência, integração, 
 - [x] Criar ou atualizar o cliente no mapa após a importação, preservando o cadastro manual existente.
 - [x] Não cancelar a importação de produção quando a consulta geográfica externa falhar.
 - [x] Informar na resposta do upload quantos clientes foram atualizados e quantos ficaram sem localização confirmada.
+
+## Melhoria prioritária — excluir PDF e dados importados
+- [x] Exibir um botão de exclusão em cada item do histórico de importações.
+- [x] Pedir confirmação identificando o nome do PDF selecionado.
+- [x] Excluir em uma única transação o log do PDF e todos os registros de produção vinculados a ele.
+- [x] Não excluir registros de outros PDFs, dados manuais ou movimentos de estoque.
+- [x] Atualizar imediatamente histórico, KPIs, tabelas, rankings e gráficos depois da exclusão.

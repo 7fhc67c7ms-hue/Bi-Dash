@@ -65,6 +65,7 @@ const analyticsInput = z.object({
   tipoPlaca: z.string().optional(),
   tiposPlaca: z.array(z.string().trim().min(1).max(255)).optional(),
   categoria: z.enum(["TODOS", "OBRAS", "COMUNS"]).default("TODOS"),
+  anjoDaGuarda: z.boolean().default(false),
   periodoA: periodSelectionInput.optional(),
   periodoB: periodSelectionInput.optional(),
 });
@@ -333,6 +334,13 @@ export const appRouter = router({
         return { success: true, id };
       }),
 
+    deletePrice: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.deleteProductPrice(input.id, ctx.user.id);
+        return { success: true };
+      }),
+
     createSupply: protectedProcedure
       .input(supplyInput)
       .mutation(async ({ ctx, input }) => {
@@ -351,6 +359,13 @@ export const appRouter = router({
       .input(z.object({ id: z.number().int().positive(), ativo: z.boolean() }))
       .mutation(async ({ ctx, input }) => {
         await db.updateSupply(input.id, ctx.user.id, { ativo: input.ativo });
+        return { success: true };
+      }),
+
+    deleteSupply: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        await db.deleteSupply(input.id, ctx.user.id);
         return { success: true };
       }),
 
@@ -700,6 +715,7 @@ export const appRouter = router({
           tipoPlaca: input.tipoPlaca,
           tiposPlaca: input.tiposPlaca,
           categoria: input.categoria,
+          anjoDaGuarda: input.anjoDaGuarda,
         });
         const uploads = await db.getProductionUploadsByUser(ctx.user.id);
         const quality = uploads.reduce(
@@ -750,9 +766,7 @@ export const appRouter = router({
           comparacaoMeses: compararMeses(data, input.months),
           tabelaProducao: formatarTabelaProducao(data),
           totalRegistros: data.length,
-          clientes: Array.from(
-            new Set(allHistoricalData.map(item => item.cliente))
-          ).sort(),
+          clientes: Array.from(new Set(filterProductionData(allHistoricalData, { anjoDaGuarda: input.anjoDaGuarda }).map(item => item.cliente))).sort(),
           tiposPlaca: Array.from(
             new Set(allHistoricalData.map(item => item.tipoPlaca))
           ).sort(),
@@ -795,8 +809,7 @@ export const appRouter = router({
     deleteUpload: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
-        await db.deleteProductionDataByUpload(input.id, ctx.user.id);
-        await db.deleteProductionUpload(input.id, ctx.user.id);
+        await db.deleteProductionUploadCascade(input.id, ctx.user.id);
         return { success: true };
       }),
 
