@@ -11,7 +11,7 @@ import { z } from "zod";
 import * as db from "./db";
 import { invokeLLM, type Message as LLMMessage } from "./_core/llm";
 import { analisarEstoque } from "./stock";
-import { analisarCustos } from "./costs";
+import { analisarCustos, filtrarCustosPorPeriodo } from "./costs";
 import { lookupCustomerLocation, summarizeCustomerLocations } from "./customerLocations";
 import { analisarProducaoCliente } from "./clientAnalysis";
 import { calcularConsumoTeorico } from "./formulas";
@@ -305,18 +305,22 @@ export const appRouter = router({
   }),
 
   costs: router({
-    getOverview: protectedProcedure.query(async ({ ctx }) => {
+    getOverview: protectedProcedure
+      .input(z.object({ periodo: z.object({ ano: z.number().int().min(2000).max(2100), mes: z.string().trim().min(1).max(32) }).optional() }).default({}))
+      .query(async ({ ctx, input }) => {
       const [production, prices, supplies, consumptions] = await Promise.all([
         db.getProductionDataByUser(ctx.user.id),
         db.getProductPricesByUser(ctx.user.id),
         db.getSuppliesByUser(ctx.user.id),
         db.getSupplyConsumptionsByUser(ctx.user.id),
       ]);
+      const filtered = filtrarCustosPorPeriodo(production, consumptions, input.periodo);
       return {
         prices,
         supplies,
-        consumptions,
-        analysis: analisarCustos(production, prices, consumptions, supplies),
+        consumptions: filtered.consumptions,
+        periodosDisponiveis: Array.from(new Map(production.map(row => [`${row.ano}-${row.mes}`, { ano: row.ano, mes: row.mes }])).values()).sort((a, b) => a.ano - b.ano || a.mes.localeCompare(b.mes)),
+        analysis: analisarCustos(filtered.production, prices, filtered.consumptions, supplies),
       };
     }),
 

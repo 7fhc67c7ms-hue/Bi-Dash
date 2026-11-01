@@ -102,3 +102,10 @@ Itens só passam para concluído com evidência de persistência, integração, 
 - [x] Excluir em uma única transação o log do PDF e todos os registros de produção vinculados a ele.
 - [x] Não excluir registros de outros PDFs, dados manuais ou movimentos de estoque.
 - [x] Atualizar imediatamente histórico, KPIs, tabelas, rankings e gráficos depois da exclusão.
+
+## Melhoria prioritária — filtro mensal financeiro
+- [x] Adicionar ao módulo de preços e custos a opção Todos os meses ou um período específico mês/ano.
+- [x] Recalcular faturamento, custo de compra, custo de insumos, custo total, custo médio e margem conforme o período selecionado.
+- [x] Filtrar o histórico de consumo pela data de referência do lançamento.
+- [x] Manter o cálculo de vigência dos preços históricos correto mesmo quando o preço foi cadastrado antes do mês analisado.
+- [x] Preservar o acumulado geral quando Todos os meses disponíveis estiver selecionado.

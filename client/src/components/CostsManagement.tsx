@@ -5,6 +5,8 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+type FinancialPeriod = { ano: number; mes: string };
+
 const money = (centavos: number | null | undefined) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format((centavos ?? 0) / 100);
 const number = (value: number | string | null | undefined) =>
@@ -17,8 +19,10 @@ const toCentavos = (value: string) => {
 };
 const toIsoDate = (value: string) => (value ? new Date(`${value}T12:00:00`).toISOString() : undefined);
 
-export default function CostsManagement({ tiposPlaca }: { tiposPlaca: string[] }) {
-  const overviewQuery = trpc.costs.getOverview.useQuery();
+export default function CostsManagement({ tiposPlaca, periodos }: { tiposPlaca: string[]; periodos: FinancialPeriod[] }) {
+  const [selectedPeriodKey, setSelectedPeriodKey] = useState("TODOS");
+  const selectedPeriod = useMemo(() => periodos.find(item => `${item.ano}-${item.mes}` === selectedPeriodKey), [periodos, selectedPeriodKey]);
+  const overviewQuery = trpc.costs.getOverview.useQuery({ periodo: selectedPeriod });
   const utils = trpc.useUtils();
   const [tipoPlaca, setTipoPlaca] = useState(tiposPlaca[0] ?? "");
   const [custoCompra, setCustoCompra] = useState("");
@@ -154,6 +158,8 @@ export default function CostsManagement({ tiposPlaca }: { tiposPlaca: string[] }
         <h2 className="mt-1 text-2xl font-semibold">Preços, custos e insumos</h2>
         <p className="mt-1 max-w-3xl text-sm text-muted-foreground">Cadastre valores sem alterar a produção importada. O histórico de preços preserva as vigências e os consumos ficam separados por frequência.</p>
       </div>
+
+      <Card className="border-primary/20 bg-primary/5"><CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-end sm:justify-between"><label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Período dos valores financeiros<select value={selectedPeriodKey} onChange={event => setSelectedPeriodKey(event.target.value)} className="mt-1 h-10 w-full min-w-56 rounded-md border border-input bg-background px-3 text-sm font-normal text-foreground sm:w-auto"><option value="TODOS">Todos os meses disponíveis</option>{periodos.map(period => <option key={`${period.ano}-${period.mes}`} value={`${period.ano}-${period.mes}`}>{period.mes} / {period.ano}</option>)}</select></label><p className="max-w-xl text-xs text-muted-foreground">Faturamento, custo de compra, margem, custo médio e insumos agora respeitam este período. Os preços cadastrados continuam disponíveis como histórico de referência.</p></CardContent></Card>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <Card><CardContent className="p-4"><p className="text-xs uppercase text-muted-foreground">Faturamento estimado</p><p className="mt-2 text-xl font-semibold text-emerald-600">{money(analysis?.faturamentoCentavos)}</p></CardContent></Card>

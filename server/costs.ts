@@ -27,6 +27,27 @@ export type CostAnalysis = {
   }>;
 };
 
+export type FinancialPeriod = { ano: number; mes: string };
+
+const MONTHS = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
+const normalizeMonth = (value: string) => value.trim().toLocaleUpperCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+export function filtrarCustosPorPeriodo<T extends SupplyConsumption>(
+  production: ProductionData[],
+  consumptions: T[],
+  period?: FinancialPeriod,
+) {
+  if (!period) return { production, consumptions };
+  const targetMonth = normalizeMonth(period.mes);
+  return {
+    production: production.filter(row => row.ano === period.ano && normalizeMonth(row.mes) === targetMonth),
+    consumptions: consumptions.filter(item => {
+      const date = new Date(item.referenciaEm);
+      return date.getFullYear() === period.ano && normalizeMonth(MONTHS[date.getMonth()]) === targetMonth;
+    }),
+  };
+}
+
 function priceForProduction(
   row: ProductionData,
   pricesByType: Map<string, ProductPrice[]>,

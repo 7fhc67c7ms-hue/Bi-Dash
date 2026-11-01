@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analisarCustos } from "./costs";
+import { analisarCustos, filtrarCustosPorPeriodo } from "./costs";
 
 const date = new Date("2026-01-15T12:00:00.000Z");
 
@@ -58,5 +58,21 @@ describe("analisarCustos", () => {
     expect(result.custoTotalCentavos).toBe(5250);
     expect(result.margemBrutaCentavos).toBe(6750);
     expect(result.custoMedioPorPlacaCentavos).toBe(525);
+  });
+
+  it("filtra produção e consumo por ano e mês", () => {
+    const january = { ano: 2026, mes: "JANEIRO" };
+    const februaryDate = new Date("2026-02-15T12:00:00.000Z");
+    const production = [
+      { id: 1, ano: 2026, mes: "JANEIRO" },
+      { id: 2, ano: 2026, mes: "FEVEREIRO" },
+    ] as Array<{ id: number; ano: number; mes: string }>;
+    const consumptions = [
+      { id: 1, referenciaEm: date },
+      { id: 2, referenciaEm: februaryDate },
+    ] as Array<{ id: number; referenciaEm: Date }>;
+    const result = filtrarCustosPorPeriodo(production as never, consumptions as never, january);
+    expect(result.production.map(item => item.id)).toEqual([1]);
+    expect(result.consumptions.map(item => item.id)).toEqual([1]);
   });
 });

@@ -557,7 +557,7 @@ export default function DashboardContent({ user }: DashboardContentProps) {
           ) : activeModule === "ESTOQUE" ? (
             <StockManagement tiposPlaca={analyticsData.tiposPlaca} />
           ) : activeModule === "CUSTOS" ? (
-            <div id="custos" className="scroll-mt-6"><CostsManagement tiposPlaca={analyticsData.tiposPlaca} /></div>
+            <div id="custos" className="scroll-mt-6"><CostsManagement tiposPlaca={analyticsData.tiposPlaca} periodos={analyticsData.periodosDisponiveis} /></div>
           ) : activeModule === "COBERTURA" ? (
             <div id="cobertura" className="scroll-mt-6"><CustomerCoverage /></div>
           ) : activeModule === "CLIENTE" ? (
